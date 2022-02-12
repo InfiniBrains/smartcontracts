@@ -19,6 +19,9 @@ if (!mnemonic) {
   console.warn("RANDOM MNEMONIC used: " + mnemonic);
 }
 
+let wallet = Wallet.fromMnemonic(mnemonic);
+console.log("Using wallet with address: " + wallet.address);
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -46,6 +49,10 @@ const config: HardhatUserConfig = {
     }
   },
   networks: {
+    local: {
+      url: "http://localhost:8545",
+      accounts: { mnemonic },
+    },
     bsctest: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       chainId: 97,
@@ -58,6 +65,9 @@ const config: HardhatUserConfig = {
     },
     hardhat: {
       accounts: { mnemonic },
+      // forking: {
+      //   url: `${process.env.CHAINSTACK_PROVIDER}`,
+      // },
     },
   },
   gasReporter: {
@@ -66,6 +76,12 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+  },
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test",
   },
 };
 
