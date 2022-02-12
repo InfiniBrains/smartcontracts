@@ -40,4 +40,9 @@ describe("Fabrica de Genios", function () {
 
         expect((await contract.balanceOf(address1.address)).toString()).to.equal(BigNumber.from(0).toString());
     });
+
+    it("Should have the correct name", async function () {
+        expect((await contract.name())).to.equal("Fabrica de Genios Coin");
+        expect((await contract.symbol())).to.equal("FGC");
+    });
 });

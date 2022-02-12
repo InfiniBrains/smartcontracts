@@ -8,14 +8,16 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { Wallet } from "ethers";
 
+import { resolve } from "path";
+
+dotenv.config({ path: resolve(__dirname, "./.env") });
+
 let mnemonic = process.env.MNEMONIC;
 if (!mnemonic) {
   console.warn("Please set MNEMONIC in a .env file. I create one random here");
   mnemonic = Wallet.createRandom().mnemonic.phrase;
   console.warn("RANDOM MNEMONIC used: " + mnemonic);
 }
-
-dotenv.config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -32,7 +34,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.11",
+    version: "0.8.9",
     settings: {
       metadata: {
         bytecodeHash: "none",
