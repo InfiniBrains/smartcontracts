@@ -37,8 +37,8 @@
     "test": "hardhat test",
     "compile": "hardhat compile",
     "fork": "hardhat node & disown",
-    "deploy:local": "hardhat run scripts/deploy.ts --network local",
-    "deploy:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
+    "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",
+    "deploy:tolsta:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
   },
   "dependencies": {}
 }
