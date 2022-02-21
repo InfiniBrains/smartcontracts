@@ -12,21 +12,31 @@ contract FabricaDeGeniosCoin is ERC20PresetFixedSupply, AccessControlEnumerable 
     using Address for address;
 //    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    // todo: protect against creation of different dex usages
+    // todo: protect against creation of different dexes
     // 1. protect the token to be used before DEX listing
+    //    - create a function that only unpause or unlock the token
+    //    - reason: we are going to use BNB funds from public sale as liquidity
     // 2. implement transactions fees
-    //    - create sinkholes ex.: burn(total supply approach, transfer approach), team(dev, mkt...), liquidity, lottery
+    //    - create sinkholes ex.: burn(total supply approach vs transfer to dead address approach), team(dev, mkt...), liquidity, lottery. Each one with specific address.
     //    - add whitelist for exceptions from fees
     //    - add different fees on buy or sell dex transactions
     //    - exclude liquidity fee or other fees from common transacions
     //    - limit the total fee percent to increase investor protection
     // 3. implement anti dump measures
     //    - if someone wants to dumps a bunch of tokens add a costly fee
+    //    - create a funcion the more it wants to dump, more it would be taken
     // 4. anti bot measures
     //    - protect against multiple dex transacions in a small amout of time
-    //    - add temp-bans, perma-ban, suspiction detection, attention time window
+    //    - add temp-bans, perma-ban, suspiction detection, awareness time window
     // 5. protect against user misuse
     //    - add withdraw fuctions to give back tokens or native coin for users that send it to the contract
+    //    - add native coin, ERC20, ERC721, ERC1155 withdraw functions.
+    // 6. increase transparency:
+    //    - the contract owner cannot set abusive taxes
+    //    - the contract owner cannot pause trading after dex listing
+    //    - every set function should emit log
+    //    - comment / document all functions
+    //    - each contract should be placed in one file. it is preferrable to import openzeppelin and uniswap code and not embed it into one sigle file
 
     constructor() ERC20PresetFixedSupply("Fabrica de Genios Coin", "FGC", 1000000000 * 10**decimals(), _msgSender()) {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
