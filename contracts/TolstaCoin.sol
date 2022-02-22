@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 
 contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
@@ -40,6 +41,11 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         );
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
+    }
+
+    // CONTRACT TOKEN DESTROY
+    function _burnToken(uint256 _amount) private onlyRole(DEFAULT_ADMIN_ROLE){
+        burn(_amount);
     }
 
 }

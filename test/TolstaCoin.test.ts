@@ -43,4 +43,10 @@ describe("Tolsta Coin", function () {
         await contract.withdrawERC20(contract.address, owner.address, 1);
         await expect(contract.withdrawERC20(contract.address, owner.address, 1)).to.be.revertedWith("You are trying to withdraw more funds than available");
     });
+
+    it("The admin burn token. Tolsta Coin.", async function () {
+        console.log("TOTAL Tolsta Coin " + ethers.utils.formatEther(await contract.balanceOf(owner.address)));
+        await contract.burn(ethers.utils.parseUnits(String(1000000000), 18));
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("0.0");
+    });
 });
