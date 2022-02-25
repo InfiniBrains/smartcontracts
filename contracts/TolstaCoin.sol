@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-
 
 contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     using Address for address;
@@ -44,7 +42,9 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     }
 
     // CONTRACT TOKEN DESTROY
-    function _burnToken(uint256 _amount) private onlyRole(DEFAULT_ADMIN_ROLE){
+    function burnToken(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE){
+        uint256 porcentage = _amount * 100 / balanceOf(_msgSender());
+        require(porcentage <=  50, "50% maximum burn allowed");
         burn(_amount);
     }
 

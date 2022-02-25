@@ -46,7 +46,9 @@ describe("Tolsta Coin", function () {
 
     it("The admin burn token. Tolsta Coin.", async function () {
         console.log("TOTAL Tolsta Coin " + ethers.utils.formatEther(await contract.balanceOf(owner.address)));
-        await contract.burn(ethers.utils.parseUnits(String(1000000000), 18));
-        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("0.0");
+        await expect(contract.burnToken(ethers.utils.parseUnits(String(1000000000), 18))).to.be.revertedWith("50% maximum burn allowed");
+
+        await contract.burnToken(ethers.utils.parseUnits(String(500000000), 18));
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
     });
 });
