@@ -50,5 +50,9 @@ describe("Tolsta Coin", function () {
 
         await contract.burnToken(ethers.utils.parseUnits(String(500000000), 18));
         expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
+
+        await expect(contract.burnTeam(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
+        await contract.burnToken(ethers.utils.parseUnits(String(200000000), 18));
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("300000000.0");
     });
 });

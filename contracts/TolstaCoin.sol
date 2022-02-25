@@ -11,6 +11,8 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     using Address for address;
     
+    address private walletTeam = address(0xfC438bCD0f268b91f81b091Dc965D4EA3acB9556);
+
     constructor() ERC20PresetFixedSupply("Tolsta Coin", "TC", 1000000000 * 10**decimals(), _msgSender()){ 
         // ADD ROLE ADIMIN
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -46,6 +48,12 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         uint256 porcentage = _amount * 100 / balanceOf(_msgSender());
         require(porcentage <=  50, "50% maximum burn allowed");
         burn(_amount);
+    }
+
+    // TRANSFER TO TEAM WALLET 
+    function burnTeam(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
+        require(_amount <= payable(address(this)).balance, "You are trying to withdraw more funds than available");
+        transfer(walletTeam , _amount);
     }
 
 }
