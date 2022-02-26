@@ -1,11 +1,6 @@
 //Moeda mais valorizada que BTC e ETH, confia...
 pragma solidity ^0.8.9;
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+
 
 contract CiscoCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     using Address for address;
