@@ -11,3 +11,4 @@ artifacts
 .idea/
 
 package-lock.json
+.DS_Store
