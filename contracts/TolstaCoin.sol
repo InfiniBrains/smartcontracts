@@ -7,8 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
+
+contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable, Ownable {
     using Address for address;
     
     address private walletTeam = address(0xfC438bCD0f268b91f81b091Dc965D4EA3acB9556);
@@ -20,7 +22,6 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         console.log("contract created");
     }
 
-    
     function withdraw(address payable to, uint256 amount) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
         require(to != address(0), "Transfer to the zero address");
         require(amount <= payable(address(this)).balance, "You are trying to withdraw more funds than available");
@@ -52,8 +53,13 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
 
     // TRANSFER TO TEAM WALLET 
     function burnTeam(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
-        require(_amount <= payable(address(this)).balance, "You are trying to withdraw more funds than available");
+        require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(walletTeam , _amount);
     }
 
+    // TRANSFER FROM LIQUIDITY 
+    function burnFromLiquidity(uint256 _amount) external {
+        require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
+        transfer(address(owner()) , _amount);  
+    }
 }
