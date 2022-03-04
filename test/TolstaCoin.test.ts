@@ -48,20 +48,20 @@ describe("Tolsta Coin", function () {
         console.log("TOTAL Tolsta Coin " + ethers.utils.formatEther(await contract.balanceOf(owner.address)));
         await expect(contract.burnToken(ethers.utils.parseUnits(String(1000000000), 18))).to.be.revertedWith("50% maximum burn allowed");
 
-        await contract.burnToken(ethers.utils.parseUnits(String(500000000), 18));
+        await contract.withdrawTeam(ethers.utils.parseUnits(String(500000000), 18));
         expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
 
        
-        await contract.burnTeam(ethers.utils.parseUnits(String(200000000), 18));
+        await contract.withdrawTeam(ethers.utils.parseUnits(String(200000000), 18));
         expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("300000000.0");
-        await expect(contract.burnTeam(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
+        await expect(contract.withdrawTeam(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
 
         await contract.transfer(address1.address, ethers.utils.parseUnits(String(200000000), 18));
         contract = contract.connect(address1);
         console.log("TOTAL ADDRESS1  " + ethers.utils.formatEther(await contract.balanceOf(address1.address)));
-        await contract.burnFromLiquidity(ethers.utils.parseUnits(String(200000000), 18));
+        await contract.giveback(ethers.utils.parseUnits(String(200000000), 18));
         console.log("TOTAL ADDRESS1 BURN " + ethers.utils.formatEther(await contract.balanceOf(address1.address)));
-        await expect(contract.burnFromLiquidity(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
+        await expect(contract.giveback(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
         expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("300000000.0");
 
         console.log("TOTAL Tolsta Coin " + ethers.utils.formatEther(await contract.balanceOf(owner.address)));

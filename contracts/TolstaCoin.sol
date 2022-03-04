@@ -52,13 +52,13 @@ contract TolstaCoin is ERC20PresetFixedSupply, AccessControlEnumerable, Ownable 
     }
 
     // TRANSFER TO TEAM WALLET 
-    function burnTeam(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
+    function withdrawTeam(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
         require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(walletTeam , _amount);
     }
 
-    // TRANSFER FROM LIQUIDITY 
-    function burnFromLiquidity(uint256 _amount) external {
+    // GIVEBACK FROM LIQUIDITY 
+    function giveback(uint256 _amount) external {
         require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(address(owner()) , _amount);  
     }
