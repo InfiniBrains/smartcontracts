@@ -1,21 +1,21 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import {FabricaDeGeniosCoin, FabricaDeGeniosCoin__factory} from "../typechain";
+import {ArtuinoCoin, ArtuinoCoin__factory} from "../typechain";
 import {BigNumber} from "ethers";
 
 describe("Artuino", function () {
     let owner: SignerWithAddress;
     let address1: SignerWithAddress;
     let address2: SignerWithAddress;
-    let contract: FabricaDeGeniosCoin;
+    let contract: ArtuinoCoin;
 
     before(async function () {
         [owner, address1, address2] = await ethers.getSigners();
     });
 
     beforeEach(async function () {
-        let contractFactory = <FabricaDeGeniosCoin__factory>await ethers.getContractFactory("ArtuinoCoin");
+        let contractFactory = <ArtuinoCoin__factory>await ethers.getContractFactory("ArtuinoCoin");
         contract = await contractFactory.deploy();
         contract = await contract.deployed();
     });
