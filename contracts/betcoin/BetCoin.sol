@@ -3,15 +3,50 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 
-contract BetCoin is Context, IERC20, Ownable {
+/**
+ * @dev The contract owner will renounce the ownership in the future
+ */
+contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable, Pausable, ERC20Permit {
+    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
+    function snapshot() public onlyRole(SNAPSHOT_ROLE) {
+        _snapshot();
+    }
+
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+    internal
+    whenNotPaused
+    override(ERC20, ERC20Snapshot)
+    {
+        super._beforeTokenTransfer(from, to, amount);
+    }
+
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -27,7 +62,7 @@ contract BetCoin is Context, IERC20, Ownable {
     mapping (address => uint) public walletToSellime;
 
     address[] private _excluded;
-    uint8 private constant _decimals = 12;
+    uint8 private constant _decimals = 18;
     uint256 private constant MAX = ~uint256(0);
 
     uint256 private _tTotal = 100000000 * 10 **_decimals;     // Supply do Token = 100m
@@ -137,8 +172,13 @@ contract BetCoin is Context, IERC20, Ownable {
         inSwapAndLiquify = false;
     }
 
-    constructor () {
-        _rOwned[owner()] = _rTotal;
+    constructor () ERC20("MatchBet Token", "MBT") ERC20Permit("MatchBet") {
+        // Grant Roles to the contract deployer
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(SNAPSHOT_ROLE, _msgSender());
+        _grantRole(PAUSER_ROLE, _msgSender());
+
+        _rOwned[_msgSender()] = _rTotal;
 
         IUniswapV2Router02 _PancakeSwapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); //BSC mainnet
         // testnet
@@ -150,7 +190,7 @@ contract BetCoin is Context, IERC20, Ownable {
         // wallet project - change address
         marketingAddress = payable(0xAdcddde4D6307A13946d3c3bE1B2Ed0eE2323f0a);
 
-        _isExcludedFromFee[owner()] = true;
+        _isExcludedFromFee[_msgSender()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[marketingAddress] = true;
         _isExcludedFromFee[wallet_presale] = true;
@@ -160,20 +200,16 @@ contract BetCoin is Context, IERC20, Ownable {
         antidmp_measures[1] = antidmp({selling_treshold: tkFee2 * 10**_decimals, extra_tax: txFee2});
         antidmp_measures[2] = antidmp({selling_treshold: tkFee3 * 10**_decimals, extra_tax: txFee3});
 
-
-
         _isExcluded[address(this)] = true;
         _excluded.push(address(this));
 
         _isExcluded[pancakeswapV2Pair] = true;
         _excluded.push(pancakeswapV2Pair);
 
-        emit Transfer(address(0), owner(), _tTotal);
+        emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
-
-
-    function setWalletPreSale(address account) public onlyOwner {
+    function setWalletPreSale(address account) public onlyRole(MANAGER_ROLE) {
         wallet_presale = account;
     }
 
@@ -185,29 +221,29 @@ contract BetCoin is Context, IERC20, Ownable {
         return walletToSellime[walletSell];
     }
 
-    function setBuyRates(uint256 rfi, uint256 marketing, uint256 liquidity, uint256 burn) public onlyOwner {
+    function setBuyRates(uint256 rfi, uint256 marketing, uint256 liquidity, uint256 burn) public onlyRole(MANAGER_ROLE) {
         buyRates.rfi = rfi;
         buyRates.marketing = marketing;
         buyRates.liquidity = liquidity;
         buyRates.burn = burn;
     }
 
-    function setSellRates(uint256 rfi, uint256 marketing, uint256 liquidity, uint256 burn) public onlyOwner {
+    function setSellRates(uint256 rfi, uint256 marketing, uint256 liquidity, uint256 burn) public onlyRole(MANAGER_ROLE) {
         sellRates.rfi = rfi;
         sellRates.marketing = marketing;
         sellRates.liquidity = liquidity;
         sellRates.burn = burn;
     }
 
-    function setMarketingAddress(address payable  _marketingAddress) public onlyOwner {
+    function setMarketingAddress(address payable  _marketingAddress) public onlyRole(MANAGER_ROLE) {
         marketingAddress = _marketingAddress;
     }
 
 
-    function setEnableContract(bool _enable) public onlyOwner {
+    // todo: deprecate this. Use only pause and unpause
+    function setEnableContract(bool _enable) public onlyRole(PAUSER_ROLE) {
         _transferForm = _enable;
     }
-
 
     function getMarketingAddress() public view returns (address) {
         return marketingAddress;
@@ -224,43 +260,43 @@ contract BetCoin is Context, IERC20, Ownable {
         return false;
     }
 
-    function setBuyTime(uint timeBetweenPurchases) public onlyOwner {
+    function setBuyTime(uint timeBetweenPurchases) public onlyRole(MANAGER_ROLE) {
         buyTime = timeBetweenPurchases;
     }
 
-    function setSellTime(uint timeBetween) public onlyOwner {
+    function setSellTime(uint timeBetween) public onlyRole(MANAGER_ROLE) {
         sellTime = timeBetween;
     }
 
-    function setTokenToSwap(uint256 top) public onlyOwner {
+    function setTokenToSwap(uint256 top) public onlyRole(MANAGER_ROLE) {
         numTokensToSwap = top * 10**_decimals;
     }
 
-    function setTokenToSwapLiquidity(uint256 top) public onlyOwner {
+    function setTokenToSwapLiquidity(uint256 top) public onlyRole(MANAGER_ROLE) {
         numTokensToSwapLiquidity = top * 10**_decimals;
     }
 
-    function setTkFee1(uint256 fee1) public onlyOwner {
+    function setTkFee1(uint256 fee1) public onlyRole(MANAGER_ROLE) {
         tkFee1 = fee1 * 10**_decimals;
     }
 
-    function setTkFee2(uint256 fee2) public onlyOwner {
+    function setTkFee2(uint256 fee2) public onlyRole(MANAGER_ROLE) {
         tkFee2 = fee2 * 10**_decimals;
     }
 
-    function setTkFee3(uint256 fee3) public onlyOwner {
+    function setTkFee3(uint256 fee3) public onlyRole(MANAGER_ROLE) {
         tkFee3 = fee3 * 10**_decimals;
     }
 
-    function setTxFee1(uint extra01) public onlyOwner {
+    function setTxFee1(uint extra01) public onlyRole(MANAGER_ROLE) {
         txFee1 = extra01;
     }
 
-    function setTxFee2(uint extra02) public onlyOwner {
+    function setTxFee2(uint extra02) public onlyRole(MANAGER_ROLE) {
         txFee2 = extra02;
     }
 
-    function setTxFee3(uint extra03) public onlyOwner {
+    function setTxFee3(uint extra03) public onlyRole(MANAGER_ROLE) {
         txFee3 = extra03;
     }
 
@@ -291,23 +327,24 @@ contract BetCoin is Context, IERC20, Ownable {
         return Trading;
     }
 
-    function TrandingOn(bool _enable) public onlyOwner {
+    // TODO: MAKE IT ONLY TRADEABLE AND NOT UNTRADEABLE
+    function TrandingOn(bool _enable) public onlyRole(MANAGER_ROLE) {
         Trading = _enable;
     }
 
-    function settransform(bool _enable) public onlyOwner {
+    function settransform(bool _enable) public onlyRole(MANAGER_ROLE) {
         _transferForm = _enable;
     }
 
-    function setMaxInPercent(uint256 maxInPercent) public onlyOwner {
+    function setMaxInPercent(uint256 maxInPercent) public onlyRole(MANAGER_ROLE) {
         _maxInAmount = maxInPercent * 10**_decimals;
     }
 
-    function setMaxOutPercent(uint256 maxOutPercent) public onlyOwner {
+    function setMaxOutPercent(uint256 maxOutPercent) public onlyRole(MANAGER_ROLE) {
         _maxOutAmount = maxOutPercent * 10**_decimals;
     }
 
-    function setMaxWallet(uint256 maxWalletPercent) public onlyOwner {
+    function setMaxWallet(uint256 maxWalletPercent) public onlyRole(MANAGER_ROLE) {
         _maxWallet = maxWalletPercent * 10**_decimals;
     }
 
@@ -357,7 +394,7 @@ contract BetCoin is Context, IERC20, Ownable {
         return rAmount/currentRate;
     }
 
-    function excludeFromReward(address account) public onlyOwner() {
+    function excludeFromReward(address account) public onlyRole(MANAGER_ROLE) {
         require(!_isExcluded[account], "Account is already excluded");
         if(_rOwned[account] > 0) {
             _tOwned[account] = tokenFromReflection(_rOwned[account]);
@@ -366,7 +403,7 @@ contract BetCoin is Context, IERC20, Ownable {
         _excluded.push(account);
     }
 
-    function excludeFromAll(address account) public onlyOwner() {
+    function excludeFromAll(address account) public onlyRole(MANAGER_ROLE) {
         if(!_isExcluded[account])
         {
             _isExcluded[account] = true;
@@ -379,7 +416,8 @@ contract BetCoin is Context, IERC20, Ownable {
         tokenHoldersEnumSet.remove(account);
     }
 
-    function includeInReward(address account) external onlyOwner() {
+    // TODO: CHECK EXTERNAL
+    function includeInReward(address account) external onlyRole(MANAGER_ROLE) {
         require(_isExcluded[account], "Account is not excluded");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
@@ -392,11 +430,11 @@ contract BetCoin is Context, IERC20, Ownable {
         }
     }
 
-    function excludeFromFee(address account) public onlyOwner {
+    function excludeFromFee(address account) public onlyRole(MANAGER_ROLE) {
         _isExcludedFromFee[account] = true;
     }
 
-    function includeInFee(address account) public onlyOwner {
+    function includeInFee(address account) public onlyRole(MANAGER_ROLE) {
         _isExcludedFromFee[account] = false;
     }
 
@@ -404,7 +442,7 @@ contract BetCoin is Context, IERC20, Ownable {
         return _isExcludedFromFee[account];
     }
 
-    function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner {
+    function setSwapAndLiquifyEnabled(bool _enabled) public onlyRole(MANAGER_ROLE) {
         swapAndLiquifyEnabled = _enabled;
         emit SwapAndLiquifyEnabledUpdated(_enabled);
     }
@@ -506,9 +544,7 @@ contract BetCoin is Context, IERC20, Ownable {
     }
 
     function _transfer(address from, address to, uint256 amount) private {
-
         if(_transferForm == true){
-
             require(from != address(0), "ERC20: transfer from the zero address");
             require(to != address(0), "ERC20: transfer to the zero address");
             require(amount > 0, "Transfer amount must be greater than zero");
@@ -527,16 +563,17 @@ contract BetCoin is Context, IERC20, Ownable {
         }
 
         if(_transferForm == false){
-
-            if(from != owner() && to != owner() && to != wallet_presale && from != wallet_presale && to != address(1)){
-                _tokenTransfer(from, 0x000000000000000000000000000000000000dEaD, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
-            }
-
-            else {
-
+            // todo: improve this
+            if(hasRole(MANAGER_ROLE, from) || hasRole(MANAGER_ROLE, to) || to == wallet_presale && from == wallet_presale)
                 _tokenTransfer(from, to, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
 
-            }
+            // todo: understand this
+//            if(from != owner() && to != owner() && to != wallet_presale && from != wallet_presale && to != address(1)){
+//                _tokenTransfer(from, 0x000000000000000000000000000000000000dEaD, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
+//            }
+
+            else
+                revert("contract is not enabled");
         }
     }
 
@@ -544,8 +581,8 @@ contract BetCoin is Context, IERC20, Ownable {
     function _tokenTransfer(address sender, address recipient, uint256 tAmount, bool takeFee) private {
         if(takeFee) {
             if(sender == pancakeswapV2Pair) {
-
-                if(sender != owner() && recipient != owner() && recipient != address(1)){
+                //todo: why "recipient != address(1)"
+                if(!hasRole(MANAGER_ROLE, sender) && !hasRole(MANAGER_ROLE, recipient) && recipient != address(1)){
                     require(tAmount <= _maxInAmount, "Transfer amount exceeds the maxTxAmount.");
                     bool blockedTimeLimitB = lockToBuyOrSellForTime(getFromLastBuy(sender),buyTime);
                     require(blockedTimeLimitB, "blocked Time Limit");
@@ -553,14 +590,13 @@ contract BetCoin is Context, IERC20, Ownable {
                 }
                 appliedFees = buyRates;
             } else {
-                if(sender != owner() && recipient != owner() && recipient != address(1)){
+                if(!hasRole(MANAGER_ROLE, sender) && !hasRole(MANAGER_ROLE, recipient) && recipient != address(1)){
                     require(tAmount <= _maxOutAmount, "Transfer amount exceeds the maxRxAmount.");
                     //Check time limit for in-game withdrawals
                     bool blockedTimeLimitS = lockToBuyOrSellForTime(getFromLastSell(sender), sellTime);
                     require(blockedTimeLimitS, "blocked Time Limit");
                     walletToSellime[sender] = block.timestamp;
                 }
-
 
                 appliedFees = sellRates;
                 appliedFees.liquidity = appliedFees.liquidity;
@@ -569,7 +605,6 @@ contract BetCoin is Context, IERC20, Ownable {
                 if(antiDmpFee>0) { appliedFees.liquidity = appliedFees.liquidity+antiDmpFee; }
 
             }
-
         }
 
         valuesFromGetValues memory s = _getValues(tAmount, takeFee);
@@ -679,29 +714,33 @@ contract BetCoin is Context, IERC20, Ownable {
     }
 
     function addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
-
         PancakeSwapV2Router.addLiquidityETH{value: bnbAmount}(
             address(this),
             tokenAmount,
             0,
             0,
-            owner(),
+            _msgSender(), // todo: double check
             block.timestamp
         );
         emit LiquidityAdded(tokenAmount, bnbAmount);
     }
 
-    function withdraw() onlyOwner public {
+    function withdraw() onlyRole(MANAGER_ROLE) public {
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
     }
 
-
+    /**
+     * @dev Withdraw any ERC20 token from this contract
+     * @param tokenAddress ERC20 token to withdraw
+     * @param to receiver address
+     * @param amount amount to withdraw
+     */
     function withdrawERC20(
         address tokenAddress,
         address to,
         uint256 amount
-    ) external virtual onlyOwner {
+    ) external virtual onlyRole(MANAGER_ROLE) {
         require(tokenAddress.isContract(), "ERC20 token address must be a contract");
 
         IERC20 tokenContract = IERC20(tokenAddress);
