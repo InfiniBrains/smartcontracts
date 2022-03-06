@@ -21,15 +21,17 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 /**
  * @dev The contract owner will renounce the ownership in the future
  */
-contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable, Pausable, ERC20Permit {
+// todo make it is ERC20Burnable, ERC20Snapshot, ERC20Permit
+contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+//    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
-    function snapshot() public onlyRole(SNAPSHOT_ROLE) {
-        _snapshot();
-    }
+    // todo: reenable this
+//    function snapshot() public onlyRole(SNAPSHOT_ROLE) {
+//        _snapshot();
+//    }
 
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
@@ -39,13 +41,13 @@ contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable
         _unpause();
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
-    internal
-    whenNotPaused
-    override(ERC20, ERC20Snapshot)
-    {
-        super._beforeTokenTransfer(from, to, amount);
-    }
+//    function _beforeTokenTransfer(address from, address to, uint256 amount)
+//    internal
+//    whenNotPaused
+//    override(ERC20, ERC20Snapshot)
+//    {
+//        super._beforeTokenTransfer(from, to, amount);
+//    }
 
     using SafeMath for uint256;
     using Address for address;
@@ -63,6 +65,7 @@ contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable
 
     address[] private _excluded;
     uint8 private constant _decimals = 18;
+    // todo: understand this
     uint256 private constant MAX = ~uint256(0);
 
     uint256 private _tTotal = 100000000 * 10 **_decimals;     // Supply do Token = 100m
@@ -82,8 +85,6 @@ contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable
     uint public txFee2 = 50;
     uint public tkFee3 = 20000 * 10**_decimals;
     uint public txFee3 = 75;
-
-
 
     TotFeesPaidStruct public totFeesPaid;
     string private constant _name = "MATCH BETCOIN";
@@ -172,13 +173,15 @@ contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable
         inSwapAndLiquify = false;
     }
 
-    constructor () ERC20("MatchBet Token", "MBT") ERC20Permit("MatchBet") {
+//    constructor () ERC20("MatchBet Token", "MBT") ERC20Permit("MatchBet") {
+    constructor () {
         // Grant Roles to the contract deployer
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(SNAPSHOT_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
 
         _rOwned[_msgSender()] = _rTotal;
+//        _rOwned[_msgSender()] = _rTotal;
 
         IUniswapV2Router02 _PancakeSwapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); //BSC mainnet
         // testnet
@@ -238,7 +241,6 @@ contract BetCoin is ERC20, ERC20Burnable, ERC20Snapshot, AccessControlEnumerable
     function setMarketingAddress(address payable  _marketingAddress) public onlyRole(MANAGER_ROLE) {
         marketingAddress = _marketingAddress;
     }
-
 
     // todo: deprecate this. Use only pause and unpause
     function setEnableContract(bool _enable) public onlyRole(PAUSER_ROLE) {
