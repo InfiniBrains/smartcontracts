@@ -42,5 +42,9 @@ describe("JuniorCoin", function () {
         contract = contract.connect(owner);
         await contract.withdrawERC20(contract.address, owner.address, 1);
         await expect(contract.withdrawERC20(contract.address, owner.address, 1)).to.be.revertedWith("You are trying to withdraw more funds than available");
+
+        // transfer devs
+        await contract.withdrawTeamDev(ethers.utils.parseUnits(String(500000000), 18));
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
     });
 });
