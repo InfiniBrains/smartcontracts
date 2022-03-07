@@ -11,6 +11,8 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     using Address for address;
 
+    address private walletTeamDev = address(0xfC438bCD0f268b91f81b091Dc965D4EA3acB9556);
+
     constructor() ERC20PresetFixedSupply("JuniorCoin", "JRC", 1000000000 * 10**decimals(), _msgSender()){
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
      }
@@ -35,5 +37,11 @@ contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         );
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
+    }
+
+    // TRANSFER TO TEAM WALLET 
+    function withdrawTeamDev(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
+        require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
+        transfer(walletTeamDev , _amount);
     }
 }
