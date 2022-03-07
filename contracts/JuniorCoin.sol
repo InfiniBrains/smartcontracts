@@ -40,7 +40,7 @@ contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         require(tokenContract.transfer(to, amount), "Fail on transfer");
     }
 
-    // TRANSFER TO TEAM DEVClaCle 
+    // TRANSFER TO TEAM DEV
     function withdrawTeamDev(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
         require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(walletTeamDev , _amount);
