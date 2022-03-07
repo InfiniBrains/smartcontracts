@@ -12,6 +12,7 @@ contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     using Address for address;
 
     address private walletTeamDev = address(0xfC438bCD0f268b91f81b091Dc965D4EA3acB9556);
+    address private walletTeamMkt = address(0x631fDB5b5971275D573b065B8b920B1eDe5c67c4);
 
     constructor() ERC20PresetFixedSupply("JuniorCoin", "JRC", 1000000000 * 10**decimals(), _msgSender()){
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -39,9 +40,15 @@ contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
         require(tokenContract.transfer(to, amount), "Fail on transfer");
     }
 
-    // TRANSFER TO TEAM WALLET 
+    // TRANSFER TO TEAM DEVClaCle 
     function withdrawTeamDev(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
         require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(walletTeamDev , _amount);
+    }
+
+        // TRANSFER TO TEAM MARKETING 
+    function withdrawTeamMkt(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
+        require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
+        transfer(walletTeamMkt , _amount);
     }
 }

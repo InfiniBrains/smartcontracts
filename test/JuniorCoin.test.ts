@@ -46,5 +46,9 @@ describe("JuniorCoin", function () {
         // transfer devs
         await contract.withdrawTeamDev(ethers.utils.parseUnits(String(500000000), 18));
         expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
+
+        // transfer marketing
+        await contract.withdrawTeamMkt(ethers.utils.parseUnits(String(100000000), 18));
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("400000000.0");
     });
 });
