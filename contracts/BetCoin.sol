@@ -23,7 +23,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
  */
 // todo make it is ERC20Burnable, ERC20Snapshot, ERC20Permit
 contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
-    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
+//    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 //    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -97,7 +97,6 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
         uint256 burn;
     }
 
-
     struct feeRatesStruct {
         uint256 rfi; // reflection to holders
         uint256 marketing; // wallet balance that accumulates tk bnb
@@ -114,18 +113,20 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
 
     /*  1% holders, 4% mkt, 5% liquidity  = 10% */
     feeRatesStruct public buyRates = feeRatesStruct(
-    {rfi: 10,
-    marketing: 40,
-    liquidity: 50,
-    burn: 0
+    {
+        rfi: 10,
+        marketing: 40,
+        liquidity: 50,
+        burn: 0
     });
 
     /*  1% holders, 5% mkt, 9% liquidity  = 15% */
     feeRatesStruct public sellRates = feeRatesStruct(
-    {rfi: 10,
-    marketing: 50,
-    liquidity: 90,
-    burn: 0
+    {
+        rfi: 10,
+        marketing: 50,
+        liquidity: 90,
+        burn: 0
     });
 
     feeRatesStruct private appliedFees;
@@ -150,10 +151,12 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
     address payable private walletGameAddress;
     address public wallet_presale;
 
+    // todo: what is the difference between these two bellow?
     bool public Trading = false;
+    bool private _transferForm = true;
 
     bool inSwapAndLiquify;
-    bool private _transferForm = true;
+
     bool public swapAndLiquifyEnabled = true;
 
     struct antidmp {
@@ -177,11 +180,10 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
     constructor () {
         // Grant Roles to the contract deployer
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _grantRole(SNAPSHOT_ROLE, _msgSender());
+//        _grantRole(SNAPSHOT_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
 
         _rOwned[_msgSender()] = _rTotal;
-//        _rOwned[_msgSender()] = _rTotal;
 
         IUniswapV2Router02 _PancakeSwapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); //BSC mainnet
         // testnet
@@ -240,11 +242,6 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
 
     function setMarketingAddress(address payable  _marketingAddress) public onlyRole(MANAGER_ROLE) {
         marketingAddress = _marketingAddress;
-    }
-
-    // todo: deprecate this. Use only pause and unpause
-    function setEnableContract(bool _enable) public onlyRole(PAUSER_ROLE) {
-        _transferForm = _enable;
     }
 
     function getMarketingAddress() public view returns (address) {
@@ -334,7 +331,13 @@ contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
         Trading = _enable;
     }
 
+    // TODO: MAKE IT ONLY TRADEABLE AND NOT UNTRADEABLE
     function settransform(bool _enable) public onlyRole(MANAGER_ROLE) {
+        _transferForm = _enable;
+    }
+
+    // todo: deprecate this. Use only pause and unpause
+    function setEnableContract(bool _enable) public onlyRole(PAUSER_ROLE) {
         _transferForm = _enable;
     }
 
