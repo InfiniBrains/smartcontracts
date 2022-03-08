@@ -22,7 +22,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
  * @dev The contract owner will renounce the ownership in the future
  */
 // todo make it is ERC20Burnable, ERC20Snapshot, ERC20Permit
-contract BetCoin is IERC20, Pausable, AccessControlEnumerable {
+contract BetCoinCleared is IERC20, Pausable, AccessControlEnumerable {
 //    bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 //    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
