@@ -7,8 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
+
+contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable, Ownable {
     using Address for address;
 
     address private walletTeamDev = address(0xfC438bCD0f268b91f81b091Dc965D4EA3acB9556);
@@ -50,5 +52,11 @@ contract JuniorCoin is ERC20PresetFixedSupply, AccessControlEnumerable {
     function withdrawTeamMkt(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE)  {
         require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
         transfer(walletTeamMkt , _amount);
+    }
+
+    // GIVEBACK FROM OWNER 
+    function giveback(uint256 _amount) external {
+        require(_amount <= balanceOf(_msgSender()), "You are trying to withdraw more funds than available");
+        transfer(address(owner()) , _amount);  
     }
 }
