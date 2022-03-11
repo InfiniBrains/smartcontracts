@@ -17,6 +17,7 @@ describe("JuniorCoin", function () {
         let contractFactory = <JuniorCoin__factory>await ethers.getContractFactory("JuniorCoin");
         contract = await contractFactory.deploy();
         contract = await contract.deployed();
+        await contract.afterPreSale();
     });
 
     it("Should have the correct name and total supply, JuniorCoin", async function () {
@@ -45,21 +46,21 @@ describe("JuniorCoin", function () {
 
         // transfer devs
         await contract.withdrawTeamDev(ethers.utils.parseUnits(String(500000000), 18));
-        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("500000000.0");
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("480000000.0");
 
         // transfer marketing
         await contract.withdrawTeamMkt(ethers.utils.parseUnits(String(100000000), 18));
-        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("400000000.0");
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("376000000.0");
 
         await contract.transfer(address1.address, ethers.utils.parseUnits(String(200000000), 18));
         contract = contract.connect(address1);
         console.log("TOTAL ADDRESS1  " + ethers.utils.formatEther(await contract.balanceOf(address1.address)));
         
         // giveback token 
-        await contract.giveback(ethers.utils.parseUnits(String(200000000), 18));
+        await contract.giveback(ethers.utils.parseUnits(String(188000000), 18));
         console.log("TOTAL ADDRESS1 " + ethers.utils.formatEther(await contract.balanceOf(address1.address)));
        
         await expect(contract.giveback(ethers.utils.parseUnits(String(600000000), 18))).to.be.revertedWith("You are trying to withdraw more funds than available");
-        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("400000000.0");
+        expect(ethers.utils.formatEther(await contract.balanceOf(owner.address))).to.equal("352240000.0");
     });
 });
