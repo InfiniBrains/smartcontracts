@@ -19,7 +19,7 @@ describe("BetCoin", function () {
     });
 
     beforeEach(async function () {
-        const betcoinFactory = <BetCoin__factory>await ethers.getContractFactory("BetCoin");
+        const betcoinFactory = <BetCoin__factory>await ethers.getContractFactory("BetCoinV2");
         contract = await betcoinFactory.deploy();
         contract = await contract.deployed();
         await contract.settransform(true);
