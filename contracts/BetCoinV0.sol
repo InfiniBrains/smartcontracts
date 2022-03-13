@@ -512,7 +512,7 @@ library EnumerableSet {
     }
 }
 
-contract BetCoin is Context, IERC20, Ownable {
+contract BetCoinV0 is Context, IERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;

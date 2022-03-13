@@ -19,95 +19,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 
-
-interface ISafemoon {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
-    function migrate(address account, uint256 amount) external;
-
-
-    function isMigrationStarted() external view returns (bool);
-
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-
-contract Safemoon is ISafemoon, Context, Ownable {
+contract BetCoinV2 is IERC20, Context, Ownable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -171,7 +83,6 @@ contract Safemoon is ISafemoon, Context, Ownable {
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
     address public WBNB;
-    address private migration;
     address private _initializerAccount;
     address public _burnAddress;
 
@@ -180,8 +91,6 @@ contract Safemoon is ISafemoon, Context, Ownable {
 
     uint256 public _maxTxAmount;
     uint256 private numTokensSellToAddToLiquidity;
-
-    bool private _upgraded;
 
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
@@ -195,12 +104,6 @@ contract Safemoon is ISafemoon, Context, Ownable {
         inSwapAndLiquify = true;
         _;
         inSwapAndLiquify = false;
-    }
-
-    modifier lockUpgrade {
-        require(!_upgraded, "Safemoon: Already upgraded");
-        _;
-        _upgraded = true;
     }
 
     modifier checkTierIndex(uint256 _index) {
@@ -237,36 +140,36 @@ contract Safemoon is ISafemoon, Context, Ownable {
 
 
     constructor () public {
-//        _rOwned[_msgSender()] = _rTotal;
-//
-//        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-//        // Create a uniswap pair for this new token
-//        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
-//        .createPair(address(this), _uniswapV2Router.WETH());
-//
-//        // set the rest of the contract variables
-//        uniswapV2Router = _uniswapV2Router;
-//
-//        //exclude owner and this contract from fee
-//        _isExcludedFromFee[owner()] = true;
-//        _isExcludedFromFee[address(this)] = true;
-//
-//        __Safemoon_v2_init_unchained(_router);
-//
-//        emit Transfer(address(0), _msgSender(), _tTotal);
+        //        _rOwned[_msgSender()] = _rTotal;
+        //
+        //        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
+        //        // Create a uniswap pair for this new token
+        //        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
+        //        .createPair(address(this), _uniswapV2Router.WETH());
+        //
+        //        // set the rest of the contract variables
+        //        uniswapV2Router = _uniswapV2Router;
+        //
+        //        //exclude owner and this contract from fee
+        //        _isExcludedFromFee[owner()] = true;
+        //        _isExcludedFromFee[address(this)] = true;
+        //
+        //        __BetCoin_v2_init_unchained(_router);
+        //
+        //        emit Transfer(address(0), _msgSender(), _tTotal);
 
-        __Safemoon_v2_init_unchained(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
+        __BetCoin_v2_init_unchained(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     }
 
-//    function initialize(address _router) public initializer {
-//        __Context_init_unchained();
-//        __Ownable_init_unchained();
-//        __Safemoon_v2_init_unchained(_router);
-//    }
+    //    function initialize(address _router) public initializer {
+    //        __Context_init_unchained();
+    //        __Ownable_init_unchained();
+    //        __BetCoin_v2_init_unchained(_router);
+    //    }
 
-    function __Safemoon_v2_init_unchained(address _router) internal {
-        _name = "SafeMoon";
-        _symbol = "SFM";
+    function __BetCoin_v2_init_unchained(address _router) internal {
+        _name = "MatchBet Coin";
+        _symbol = "MTC";
         _decimals = 9;
 
         _tTotal = 1000000 * 10**6 * 10**9;
@@ -294,12 +197,12 @@ contract Safemoon is ISafemoon, Context, Ownable {
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
 
-        __Safemoon_tiers_init();
+        __BetCoin_tiers_init();
 
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
-    function __Safemoon_tiers_init() internal {
+    function __BetCoin_tiers_init() internal {
         _defaultFees = _addTier(0, 500, 500, 0, 0, address(0), address(0));
         _addTier(50, 50, 100, 0, 0, address(0), address(0));
         _addTier(50, 50, 100, 100, 0, address(0), address(0));
@@ -423,15 +326,15 @@ contract Safemoon is ISafemoon, Context, Ownable {
     public
     onlyOwner()
     checkTierIndex(_tierIndex)
-    preventBlacklisted(_account, "Safemoon: Selected account is in blacklist")
+    preventBlacklisted(_account, "BetCoin: Selected account is in blacklist")
     {
-        require(_account != address(0), "Safemoon: Invalid address");
+        require(_account != address(0), "BetCoin: Invalid address");
         _accountsTier[_account] = _tierIndex;
     }
 
     function excludeWhitelistedAddress(address _account) public onlyOwner() {
-        require(_account != address(0), "Safemoon: Invalid address");
-        require(_accountsTier[_account] > 0, "Safemoon: Account is not in whitelist");
+        require(_account != address(0), "BetCoin: Invalid address");
+        require(_accountsTier[_account] > 0, "BetCoin: Account is not in whitelist");
         _accountsTier[_account] = 0;
     }
 
@@ -445,7 +348,7 @@ contract Safemoon is ISafemoon, Context, Ownable {
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
         uint256 _fees = _tier.ecoSystemFee.add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.ownerFee).add(_tier.burnFee);
-        require(_fees <= _maxFee, "Safemoon: Fees exceeded max limitation");
+        require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
 
         return _tier;
     }
@@ -459,7 +362,7 @@ contract Safemoon is ISafemoon, Context, Ownable {
         .sub(_oldFee)
         .add(_newFee);
 
-        require(_fees <= _maxFee, "Safemoon: Fees exceeded max limitation");
+        require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
     }
 
     function setEcoSystemFeePercent(uint256 _tierIndex, uint256 _ecoSystemFee) external onlyOwner() checkTierIndex(_tierIndex) {
@@ -508,7 +411,7 @@ contract Safemoon is ISafemoon, Context, Ownable {
     }
 
     function setEcoSystemFeeAddress(uint256 _tierIndex, address _ecoSystem) external onlyOwner() checkTierIndex(_tierIndex) {
-        require(_ecoSystem != address(0), "Safemoon: Address Zero is not allowed");
+        require(_ecoSystem != address(0), "BetCoin: Address Zero is not allowed");
         excludeFromReward(_ecoSystem);
         feeTiers[_tierIndex].ecoSystem = _ecoSystem;
         if(_tierIndex == 0) {
@@ -517,7 +420,7 @@ contract Safemoon is ISafemoon, Context, Ownable {
     }
 
     function setOwnerFeeAddress(uint256 _tierIndex, address _owner) external onlyOwner() checkTierIndex(_tierIndex) {
-        require(_owner != address(0), "Safemoon: Address Zero is not allowed");
+        require(_owner != address(0), "BetCoin: Address Zero is not allowed");
         excludeFromReward(_owner);
         feeTiers[_tierIndex].owner = _owner;
         if(_tierIndex == 0) {
@@ -689,8 +592,8 @@ contract Safemoon is ISafemoon, Context, Ownable {
         uint256 amount
     )
     private
-    preventBlacklisted(owner, "Safemoon: Owner address is blacklisted")
-    preventBlacklisted(spender, "Safemoon: Spender address is blacklisted")
+    preventBlacklisted(owner, "BetCoin: Owner address is blacklisted")
+    preventBlacklisted(spender, "BetCoin: Spender address is blacklisted")
     {
         require(owner != address(0), "BEP20: approve from the zero address");
         require(spender != address(0), "BEP20: approve to the zero address");
@@ -705,9 +608,9 @@ contract Safemoon is ISafemoon, Context, Ownable {
         uint256 amount
     )
     private
-    preventBlacklisted(_msgSender(), "Safemoon: Address is blacklisted")
-    preventBlacklisted(from, "Safemoon: From address is blacklisted")
-    preventBlacklisted(to, "Safemoon: To address is blacklisted")
+    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
+    preventBlacklisted(from, "BetCoin: From address is blacklisted")
+    preventBlacklisted(to, "BetCoin: To address is blacklisted")
     isRouter(_msgSender())
     {
         require(from != address(0), "BEP20: transfer from the zero address");
@@ -904,30 +807,6 @@ contract Safemoon is ISafemoon, Context, Ownable {
         _tOwned[_burnAddress] = _tOwned[_burnAddress].add(_amount);
 
         emit Transfer(sender, _burnAddress, _amount);
-    }
-
-    function setMigrationAddress(address _migration) public onlyOwner() {
-        migration = _migration;
-    }
-
-    function isMigrationStarted() external override view returns (bool) {
-        return migration != address(0);
-    }
-
-    function migrate(address account, uint256 amount)
-    external
-    preventBlacklisted(account, "Safemoon: Migrated account is blacklisted")
-    override
-    {
-        require(migration != address(0), "Safemoon: Migration is not started");
-        require(_msgSender() == migration, "Safemoon: Not Allowed");
-        _migrate(account, amount);
-    }
-
-    function _migrate(address account, uint256 amount) private {
-        require(account != address(0), "BEP20: mint to the zero address");
-
-        _tokenTransfer(_initializerAccount, account, amount, 0, false);
     }
 
     function feeTiersLength() public view returns (uint) {

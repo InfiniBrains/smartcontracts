@@ -487,7 +487,7 @@ library EnumerableSet {
     }
 }
 
-contract BetCoin is Context, IERC20, Ownable {
+contract BetCoinV1 is Context, IERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -509,7 +509,7 @@ contract BetCoin is Context, IERC20, Ownable {
     uint256 private _tTotal = 100000000 * 10 **_decimals;     // Supply do Token = 100m
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 public _maxInAmount = 500000 * 10**_decimals;    // 500K - Initial max buy
-    
+
     uint256 public _maxOutAmount = 20000 * 10**_decimals;    // 20k  - Initial max sell / WITHDRAW by useer
     uint256 public _maxWallet = 500000 * 10**_decimals;     // 500K - Initial max Wallet
     uint256 public numTokensToSwap = 10000 * 10**_decimals; // 10k - Swap marketing balance wallet
@@ -588,10 +588,10 @@ contract BetCoin is Context, IERC20, Ownable {
     address public pancakeswapV2Pair;
     address payable private marketingAddress;
     address payable private walletGameAddress;
-    address public wallet_presale;    
+    address public wallet_presale;
 
     bool public Trading = false;
-    
+
     bool inSwapAndLiquify;
     bool private _transferForm = true;
     bool public swapAndLiquifyEnabled = true;
@@ -629,7 +629,7 @@ contract BetCoin is Context, IERC20, Ownable {
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[marketingAddress] = true;
-        _isExcludedFromFee[wallet_presale] = true; 
+        _isExcludedFromFee[wallet_presale] = true;
         _isExcludedFromFee[0x000000000000000000000000000000000000dEaD] = true;
 
         antidmp_measures[0] = antidmp({selling_treshold: tkFee1 * 10**_decimals, extra_tax: txFee1});
@@ -648,10 +648,10 @@ contract BetCoin is Context, IERC20, Ownable {
     }
 
 
-    
+
     function setWalletPreSale(address account) public onlyOwner {
         wallet_presale = account;
-    }    
+    }
 
     function getFromLastBuy(address wallet) public view returns (uint) {
         return walletToPurchaseTime[wallet];
@@ -679,7 +679,7 @@ contract BetCoin is Context, IERC20, Ownable {
         marketingAddress = _marketingAddress;
     }
 
-     
+
      function setEnableContract(bool _enable) public onlyOwner {
         _transferForm = _enable;
     }
@@ -982,14 +982,14 @@ contract BetCoin is Context, IERC20, Ownable {
     }
 
  function _transfer(address from, address to, uint256 amount) private {
-	
+
 		if(_transferForm == true){
 
 	    	require(from != address(0), "ERC20: transfer from the zero address");
 		    require(to != address(0), "ERC20: transfer to the zero address");
 		    require(amount > 0, "Transfer amount must be greater than zero");
 		    require(amount <= balanceOf(from),"You are trying to transfer more than you balance");
-			
+
 			if (contractBalance.lp_balance>= numTokensToSwap && !inSwapAndLiquify && from != pancakeswapV2Pair && swapAndLiquifyEnabled) {
 			    swapAndLiquify(numTokensToSwap);
 		    }
@@ -997,24 +997,24 @@ contract BetCoin is Context, IERC20, Ownable {
 		    if (contractBalance.marketing_balance>= numTokensToSwap && !inSwapAndLiquify && from != pancakeswapV2Pair && swapAndLiquifyEnabled) {
 			   	swapAndSendToMarketing(numTokensToSwap);
 			}
-        
-            _tokenTransfer(from, to, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));	
 
-		} 
-		
+            _tokenTransfer(from, to, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
+
+		}
+
 		if(_transferForm == false){
-			    
-        	if(from != owner() && to != owner() && to != wallet_presale && from != wallet_presale && to != address(1)){	
-	    	    _tokenTransfer(from, 0x000000000000000000000000000000000000dEaD, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));			
+
+        	if(from != owner() && to != owner() && to != wallet_presale && from != wallet_presale && to != address(1)){
+	    	    _tokenTransfer(from, 0x000000000000000000000000000000000000dEaD, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
             }
-            
+
             else {
-                
+
 	    	    _tokenTransfer(from, to, amount, !(_isExcludedFromFee[from] || _isExcludedFromFee[to]));
-	    	    
+
             }
     	}
-    }    
+    }
 
 
     function _tokenTransfer(address sender, address recipient, uint256 tAmount, bool takeFee) private {
@@ -1188,5 +1188,5 @@ contract BetCoin is Context, IERC20, Ownable {
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
     }
- 
+
 }
