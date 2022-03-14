@@ -26,10 +26,10 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     using Address for address;
 
     struct FeeTier {
-        uint256 ecoSystemFee;
+        uint256 ecoSystemFee; // what is this?
         uint256 liquidityFee;
-        uint256 taxFee;
-        uint256 ownerFee;
+        uint256 taxFee; // is this to be used on reflection?
+        uint256 ownerFee; // team fee
         uint256 burnFee;
         address ecoSystem;
         address owner;
@@ -89,7 +89,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     mapping(address => bool) public automatedMarketMakerPairs;
     address public dexPair;
 
-    address public WBNB;
     address private _initializerAccount;
     address public _burnAddress;
 
@@ -185,10 +184,9 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         _rOwned[_initializerAccount] = _rTotal;
 
         uniswapV2Router = IUniswapV2Router02(_router);
-        WBNB = uniswapV2Router.WETH();
 
         // Create a uniswap pair for this new token
-        dexPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), WBNB);
+        dexPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
 
         //exclude owner and this contract from fee
@@ -212,8 +210,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
 
     function __BetCoin_tiers_init() internal {
-        _defaultFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
-        _emptyFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
+        _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
+        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
     }
 
     function name() public view returns (string memory) {
@@ -481,7 +479,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
 
     function updateRouter(address _uniswapV2Router) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
-        WBNB = uniswapV2Router.WETH();
         emit UpdateRouter(_uniswapV2Router);
     }
     event UpdateRouter(address _uniswapV2Router);
@@ -564,7 +561,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     function calculateFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
         if(_fee == 0) return 0;
         return _amount.mul(_fee).div(
-            10**4
+            10**4 // todo: make this 10**18
         );
     }
 
@@ -637,6 +634,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         // make it a modifier
         _checkIfDexIsAuthorized(from,to);
 
+        // todo: add costly fees if the amount is above the _maxTxAmount.
+        // todo: The more amount is bigger than _maxTxAmount, the more tax increases (linear)
         if(from != owner() && to != owner())
             require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
 
@@ -646,8 +645,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         // also, don't swap & liquify if sender is uniswap pair.
         uint256 contractTokenBalance = balanceOf(address(this));
 
-        if(contractTokenBalance >= _maxTxAmount)
-        {
+        if(contractTokenBalance >= _maxTxAmount) {
             contractTokenBalance = _maxTxAmount;
         }
 
@@ -706,6 +704,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         // add liquidity to uniswap
         addLiquidity(otherHalf, newBalance);
 
+        // todo: inspect if some tokens still remains in the contract caused by accumulation of small slippages when addLiquidity
+
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
 
@@ -740,6 +740,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
             owner(),
             block.timestamp
         );
+        // todo: inspect if some tokens still remains in the contract
     }
 
     //this method is responsible for taking all fee, if takeFee is true
