@@ -84,7 +84,10 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     FeeTier private _emptyFees;
 
     IUniswapV2Router02 public uniswapV2Router;
-    address public uniswapV2Pair;
+//    address public uniswapV2Pair;
+    mapping(address => bool) public automatedMarketMakerPairs;
+    address public dexPair;
+
     address public WBNB;
     address private _initializerAccount;
     address public _burnAddress;
@@ -184,8 +187,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         WBNB = uniswapV2Router.WETH();
 
         // Create a uniswap pair for this new token
-        uniswapV2Pair = IUniswapV2Factory(uniswapV2Router.factory())
-        .createPair(address(this), WBNB);
+        dexPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), WBNB);
+        _setAutomatedMarketMakerPair(dexPair, true);
 
         //exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
@@ -195,6 +198,17 @@ contract BetCoinV2 is IERC20, Context, Ownable {
 
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
+
+    function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
+        require(pair != dexPair, "cannot be removed");
+        _setAutomatedMarketMakerPair(pair, value);
+    }
+
+    function _setAutomatedMarketMakerPair(address pair, bool value) private onlyOwner {
+        automatedMarketMakerPairs[pair] = value;
+        emit SetAutomatedMarketMakerPair(pair, value);
+    }
+    event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
 
     function __BetCoin_tiers_init() internal {
         _defaultFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
@@ -464,10 +478,16 @@ contract BetCoinV2 is IERC20, Context, Ownable {
 
     event SetOwnerFeeAddress(address _empty, address _default);
 
-    function updateRouterAndPair(address _uniswapV2Router,address _uniswapV2Pair) public onlyOwner() {
+    function updateRouter(address _uniswapV2Router) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
-        uniswapV2Pair = _uniswapV2Pair;
         WBNB = uniswapV2Router.WETH();
+        emit UpdateRouter(_uniswapV2Router);
+    }
+    event UpdateRouter(address _uniswapV2Router);
+
+    function updateDefaultPair(address _uniswapV2Pair) public onlyOwner() {
+        dexPair = _uniswapV2Pair;
+        _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
     }
 
     function setDefaultSettings() external onlyOwner() {
@@ -607,7 +627,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         if (
             overMinTokenBalance &&
             !inSwapAndLiquify &&
-            from != uniswapV2Pair &&
+            //from != uniswapV2Pair &&
+            !automatedMarketMakerPairs[from] && // todo: verify this, add some way to avoid transactions from not listed pairs
             swapAndLiquifyEnabled
         ) {
             contractTokenBalance = numTokensSellToAddToLiquidity;
