@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 contract BetCoinV2 is IERC20, Context, Ownable {
     using SafeMath for uint256;
@@ -594,6 +595,30 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         emit Approval(owner, spender, amount);
     }
 
+    function compareStrings(string memory a, string memory b) public view returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    // todo: make it a modifier
+    // todo: test this
+    function _checkIfDexIsAuthorized(address from, address to) private {
+        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+        if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
+            try IUniswapV2Pair(from).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        if(Address.isContract(to) && !automatedMarketMakerPairs[to]) {
+            try IUniswapV2Pair(to).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP"))
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+    }
+
     function _transfer(
         address from,
         address to,
@@ -608,6 +633,9 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
+
+        // make it a modifier
+        _checkIfDexIsAuthorized(from,to);
 
         if(from != owner() && to != owner())
             require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
@@ -628,7 +656,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
             overMinTokenBalance &&
             !inSwapAndLiquify &&
             //from != uniswapV2Pair &&
-            !automatedMarketMakerPairs[from] && // todo: verify this, add some way to avoid transactions from not listed pairs
+            !automatedMarketMakerPairs[from] && // todo: verify this logic
             swapAndLiquifyEnabled
         ) {
             contractTokenBalance = numTokensSellToAddToLiquidity;
