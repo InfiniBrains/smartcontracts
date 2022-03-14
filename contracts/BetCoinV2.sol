@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
@@ -791,11 +792,14 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         excludeFromReward(_newBurnAddress);
     }
 
+    // todo: make nonReentrant
     function withdraw() onlyOwner public {
         uint256 balance = address(this).balance;
-        payable(msg.sender).transfer(balance);
+        Address.sendValue(payable(msg.sender), balance);
+//        payable(msg.sender).transfer(balance);
     }
 
+    // todo: make nonReentrant
     /**
      * @dev Withdraw any ERC20 token from this contract
      * @param tokenAddress ERC20 token to withdraw
