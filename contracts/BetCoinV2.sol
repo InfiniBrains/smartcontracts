@@ -59,9 +59,13 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     mapping (address => mapping (address => uint256)) private _allowances;
     mapping (address => bool) private _isExcludedFromFee;
     mapping (address => bool) private _isExcluded;
-    mapping (address => bool) private _isBlacklisted;
-    mapping (address => uint256) private _accountsTier;
 
+    /**
+      * @dev whitelist
+      */
+    mapping (address => bool) private _whitelist; // todo: probably a set works better
+
+    // todo: improve this. we are iterating over this. and this might be costly
     address[] private _excluded;
 
     uint256 private constant MAX = ~uint256(0);
@@ -77,8 +81,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     FeeTier public _defaultFees;
     FeeTier private _previousFees;
     FeeTier private _emptyFees;
-
-    FeeTier[] private feeTiers;
 
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
@@ -106,16 +108,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         inSwapAndLiquify = false;
     }
 
-    modifier checkTierIndex(uint256 _index) {
-        require(feeTiers.length > _index, "Safemoon: Invalid tier index");
-        _;
-    }
-
-    modifier preventBlacklisted(address _account, string memory errorMsg) {
-        require(!_isBlacklisted[_account], errorMsg);
-        _;
-    }
-
     modifier isRouter(address _sender) {
         {
             uint32 size;
@@ -123,11 +115,12 @@ contract BetCoinV2 is IERC20, Context, Ownable {
                 size := extcodesize(_sender)
             }
             if(size > 0) {
-                uint256 senderTier = _accountsTier[_sender];
-                if(senderTier == 0) {
+                // todo: test this!
+                bool senderTier = _whitelist[_sender];
+                if(senderTier == false) {
                     IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
                     try _routerCheck.factory() returns (address factory) {
-                        _accountsTier[_sender] = 1;
+                        _whitelist[_sender] = true;
                     } catch {
 
                     }
@@ -170,16 +163,16 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     function __BetCoin_v2_init_unchained(address _router) internal {
         _name = "MatchBet Coin";
         _symbol = "MTC";
-        _decimals = 9;
+        _decimals = 18;
 
-        _tTotal = 1000000 * 10**6 * 10**9;
+        _tTotal = 1000000 * 10**6 * _decimals;
         _rTotal = (MAX - (MAX % _tTotal));
         _maxFee = 1000;
 
         swapAndLiquifyEnabled = true;
 
-        _maxTxAmount = 5000 * 10**6 * 10**9;
-        numTokensSellToAddToLiquidity = 500 * 10**6 * 10**9;
+        _maxTxAmount = 5000 * 10**6 * _decimals;
+        numTokensSellToAddToLiquidity = 500 * 10**6 * _decimals;
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
         _initializerAccount = _msgSender();
@@ -203,10 +196,8 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     }
 
     function __BetCoin_tiers_init() internal {
-        _defaultFees = _addTier(0, 500, 500, 0, 0, address(0), address(0));
-        _addTier(50, 50, 100, 0, 0, address(0), address(0));
-        _addTier(50, 50, 100, 100, 0, address(0), address(0));
-        _addTier(100, 125, 125, 150, 0, address(0), address(0));
+        _defaultFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
+        _emptyFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
     }
 
     function name() public view returns (string memory) {
@@ -268,19 +259,19 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         return _tFeeTotal;
     }
 
-    function reflectionFromTokenInTiers(uint256 tAmount, uint256 _tierIndex, bool deductTransferFee) public view returns(uint256) {
+    function reflectionFromTokenInTiers(uint256 tAmount, bool _getDefaultFee, bool deductTransferFee) public view returns(uint256) {
         require(tAmount <= _tTotal, "Amount must be less than supply");
         if (!deductTransferFee) {
-            FeeValues memory _values = _getValues(tAmount, _tierIndex);
+            FeeValues memory _values = _getValues(tAmount, _getDefaultFee);
             return _values.rAmount;
         } else {
-            FeeValues memory _values = _getValues(tAmount, _tierIndex);
+            FeeValues memory _values = _getValues(tAmount, _getDefaultFee);
             return _values.rTransferAmount;
         }
     }
 
     function reflectionFromToken(uint256 tAmount, bool deductTransferFee) public view returns(uint256) {
-        return reflectionFromTokenInTiers(tAmount, 0, deductTransferFee);
+        return reflectionFromTokenInTiers(tAmount, true, deductTransferFee);
     }
 
     function tokenFromReflection(uint256 rAmount) public view returns(uint256) {
@@ -298,7 +289,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         _excluded.push(account);
     }
 
-    function includeInReward(address account) external onlyOwner() {
+    function includeInReward(address account) public onlyOwner() {
         require(_isExcluded[account], "Account is already included");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
@@ -319,31 +310,22 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         _isExcludedFromFee[account] = false;
     }
 
-    function whitelistAddress(
-        address _account,
-        uint256 _tierIndex
-    )
-    public
-    onlyOwner()
-    checkTierIndex(_tierIndex)
-    preventBlacklisted(_account, "BetCoin: Selected account is in blacklist")
+    function whitelistAddress(address _account) public onlyOwner()
     {
         require(_account != address(0), "BetCoin: Invalid address");
-        _accountsTier[_account] = _tierIndex;
+        _whitelist[_account] = true;
     }
 
     function excludeWhitelistedAddress(address _account) public onlyOwner() {
         require(_account != address(0), "BetCoin: Invalid address");
-        require(_accountsTier[_account] > 0, "BetCoin: Account is not in whitelist");
-        _accountsTier[_account] = 0;
+        require(_whitelist[_account] == true, "BetCoin: Account is not in whitelist");
+        delete _whitelist[_account];
     }
 
-    function accountTier(address _account) public view returns (FeeTier memory) {
-        return feeTiers[_accountsTier[_account]];
-    }
+    event ExcludeWhitelistedAddress(address _account);
 
     function isWhitelisted(address _account) public view returns (bool) {
-        return _accountsTier[_account] > 0;
+        return _whitelist[_account];
     }
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
@@ -365,126 +347,121 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
     }
 
-    function setEcoSystemFeePercent(uint256 _tierIndex, uint256 _ecoSystemFee) external onlyOwner() checkTierIndex(_tierIndex) {
-        FeeTier memory tier = feeTiers[_tierIndex];
-        checkFeesChanged(tier, tier.ecoSystemFee, _ecoSystemFee);
-        feeTiers[_tierIndex].ecoSystemFee = _ecoSystemFee;
-        if(_tierIndex == 0) {
-            _defaultFees.ecoSystemFee = _ecoSystemFee;
+    function setEcoSystemFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.ecoSystemFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.ecoSystemFee, _default);
+            _defaultFees.ecoSystemFee = _default;
         }
-    }
 
-    function setLiquidityFeePercent(uint256 _tierIndex, uint256 _liquidityFee) external onlyOwner() checkTierIndex(_tierIndex) {
-        FeeTier memory tier = feeTiers[_tierIndex];
-        checkFeesChanged(tier, tier.liquidityFee, _liquidityFee);
-        feeTiers[_tierIndex].liquidityFee = _liquidityFee;
-        if(_tierIndex == 0) {
-            _defaultFees.liquidityFee = _liquidityFee;
+        if(_empty != _emptyFees.ecoSystemFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.ecoSystemFee, _empty);
+            _emptyFees.ecoSystemFee = _empty;
         }
+
+        emit SetEcoSystemFeePercent(_empty, _default);
     }
 
-    function setTaxFeePercent(uint256 _tierIndex, uint256 _taxFee) external onlyOwner() checkTierIndex(_tierIndex) {
-        FeeTier memory tier = feeTiers[_tierIndex];
-        checkFeesChanged(tier, tier.taxFee, _taxFee);
-        feeTiers[_tierIndex].taxFee = _taxFee;
-        if(_tierIndex == 0) {
-            _defaultFees.taxFee = _taxFee;
+    event SetEcoSystemFeePercent(uint256 _empty, uint256 _default);
+
+    function setLiquidityFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.liquidityFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.liquidityFee, _default);
+            _defaultFees.liquidityFee = _default;
         }
-    }
 
-    function setOwnerFeePercent(uint256 _tierIndex, uint256 _ownerFee) external onlyOwner() checkTierIndex(_tierIndex) {
-        FeeTier memory tier = feeTiers[_tierIndex];
-        checkFeesChanged(tier, tier.ownerFee, _ownerFee);
-        feeTiers[_tierIndex].ownerFee = _ownerFee;
-        if(_tierIndex == 0) {
-            _defaultFees.ownerFee = _ownerFee;
+        if(_empty != _emptyFees.liquidityFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.liquidityFee, _empty);
+            _emptyFees.liquidityFee = _empty;
         }
+
+        emit SetLiquidityFeePercent(_empty, _default);
     }
 
-    function setBurnFeePercent(uint256 _tierIndex, uint256 _burnFee) external onlyOwner() checkTierIndex(_tierIndex) {
-        FeeTier memory tier = feeTiers[_tierIndex];
-        checkFeesChanged(tier, tier.burnFee, _burnFee);
-        feeTiers[_tierIndex].burnFee = _burnFee;
-        if(_tierIndex == 0) {
-            _defaultFees.burnFee = _burnFee;
+    event SetLiquidityFeePercent(uint256 _empty, uint256 _default);
+
+    function setTaxFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.taxFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.taxFee, _default);
+            _defaultFees.taxFee = _default;
         }
-    }
 
-    function setEcoSystemFeeAddress(uint256 _tierIndex, address _ecoSystem) external onlyOwner() checkTierIndex(_tierIndex) {
-        require(_ecoSystem != address(0), "BetCoin: Address Zero is not allowed");
-        excludeFromReward(_ecoSystem);
-        feeTiers[_tierIndex].ecoSystem = _ecoSystem;
-        if(_tierIndex == 0) {
-            _defaultFees.ecoSystem = _ecoSystem;
+        if(_empty != _emptyFees.taxFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.taxFee, _empty);
+            _emptyFees.taxFee = _empty;
         }
+
+        emit SetTaxFeePercent(_empty, _default);
     }
 
-    function setOwnerFeeAddress(uint256 _tierIndex, address _owner) external onlyOwner() checkTierIndex(_tierIndex) {
-        require(_owner != address(0), "BetCoin: Address Zero is not allowed");
-        excludeFromReward(_owner);
-        feeTiers[_tierIndex].owner = _owner;
-        if(_tierIndex == 0) {
-            _defaultFees.owner = _owner;
+    event SetTaxFeePercent(uint256 _empty, uint256 _default);
+
+    function setOwnerFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.ownerFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.ownerFee, _default);
+            _defaultFees.ownerFee = _default;
         }
+
+        if(_empty != _emptyFees.ownerFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.ownerFee, _empty);
+            _emptyFees.ownerFee = _empty;
+        }
+
+        emit SetOwnerFeePercent(_empty, _default);
     }
 
-    function addTier(
-        uint256 _ecoSystemFee,
-        uint256 _liquidityFee,
-        uint256 _taxFee,
-        uint256 _ownerFee,
-        uint256 _burnFee,
-        address _ecoSystem,
-        address _owner
-    ) public onlyOwner() {
-        _addTier(
-            _ecoSystemFee,
-            _liquidityFee,
-            _taxFee,
-            _ownerFee,
-            _burnFee,
-            _ecoSystem,
-            _owner
-        );
+    event SetOwnerFeePercent(uint256 _empty, uint256 _default);
+
+    function setBurnFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.burnFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.burnFee, _default);
+            _defaultFees.burnFee = _default;
+        }
+
+        if(_empty != _emptyFees.burnFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.burnFee, _empty);
+            _emptyFees.burnFee = _empty;
+        }
+
+        emit SetBurnFeePercent(_empty, _default);
     }
 
-    function _addTier(
-        uint256 _ecoSystemFee,
-        uint256 _liquidityFee,
-        uint256 _taxFee,
-        uint256 _ownerFee,
-        uint256 _burnFee,
-        address _ecoSystem,
-        address _owner
-    ) internal returns (FeeTier memory) {
-        FeeTier memory _newTier = checkFees(FeeTier(
-                _ecoSystemFee,
-                _liquidityFee,
-                _taxFee,
-                _ownerFee,
-                _burnFee,
-                _ecoSystem,
-                _owner
-            ));
-        excludeFromReward(_ecoSystem);
-        excludeFromReward(_owner);
-        feeTiers.push(_newTier);
+    event SetBurnFeePercent(uint256 _empty, uint256 _default);
 
-        return _newTier;
+    function setEcoSystemFeeAddress(address _empty, address _default) external onlyOwner() {
+        if(_default != _defaultFees.ecoSystem) {
+            require(_default != address(0), "BetCoin: Address Zero is not allowed");
+            includeInReward(_defaultFees.ecoSystem);
+            _defaultFees.ecoSystem = _default;
+            excludeFromReward(_default);
+        }
+        if(_empty != _emptyFees.ecoSystem) {
+            require(_empty != address(0), "BetCoin: Address Zero is not allowed");
+            includeInReward(_emptyFees.ecoSystem);
+            _emptyFees.ecoSystem = _empty;
+            excludeFromReward(_empty);
+        }
+        emit SetEcoSystemFeeAddress(_empty, _default);
     }
 
-    function feeTier(uint256 _tierIndex) public view checkTierIndex(_tierIndex) returns (FeeTier memory) {
-        return feeTiers[_tierIndex];
+    event SetEcoSystemFeeAddress(address _empty, address _default);
+
+    function setOwnerFeeAddress(address _empty, address _default) external onlyOwner() {
+        if(_default != _defaultFees.owner) {
+            require(_default != address(0), "BetCoin: Address Zero is not allowed");
+            includeInReward(_defaultFees.owner);
+            _defaultFees.owner = _default;
+            excludeFromReward(_default);
+        }
+        if(_empty != _emptyFees.owner) {
+            require(_empty != address(0), "BetCoin: Address Zero is not allowed");
+            includeInReward(_emptyFees.owner);
+            _emptyFees.owner = _empty;
+            excludeFromReward(_empty);
+        }
+        emit SetOwnerFeeAddress(_empty, _default);
     }
 
-    function blacklistAddress(address account) public onlyOwner() {
-        _isBlacklisted[account] = true;
-        _accountsTier[account] = 0;
-    }
-
-    function unBlacklistAddress(address account) public onlyOwner() {
-        _isBlacklisted[account] = false;
-    }
+    event SetOwnerFeeAddress(address _empty, address _default);
 
     function updateRouterAndPair(address _uniswapV2Router,address _uniswapV2Pair) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
@@ -515,15 +492,15 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         _tFeeTotal = _tFeeTotal.add(tFee);
     }
 
-    function _getValues(uint256 tAmount, uint256 _tierIndex) private view returns (FeeValues memory) {
-        tFeeValues memory tValues = _getTValues(tAmount, _tierIndex);
+    function _getValues(uint256 tAmount, bool _getDefault) private view returns (FeeValues memory) {
+        tFeeValues memory tValues = _getTValues(tAmount, _getDefault);
         uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEchoSystem).add(tValues.tOwner).add(tValues.tBurn);
         (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tValues.tFee, tTransferFee, _getRate());
         return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEchoSystem, tValues.tLiquidity, tValues.tFee, tValues.tOwner, tValues.tBurn);
     }
 
-    function _getTValues(uint256 tAmount, uint256 _tierIndex) private view returns (tFeeValues memory) {
-        FeeTier memory tier = feeTiers[_tierIndex];
+    function _getTValues(uint256 tAmount, bool _getDefault) private view returns (tFeeValues memory) {
+        FeeTier memory tier = _getDefault ? _defaultFees : _emptyFees;
         tFeeValues memory tValues = tFeeValues(
             0,
             calculateFee(tAmount, tier.ecoSystemFee),
@@ -570,20 +547,16 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     }
 
     function removeAllFee() private {
-        _previousFees = feeTiers[0];
-        feeTiers[0] = _emptyFees;
+        _previousFees = _defaultFees;
+        _defaultFees = _emptyFees;
     }
 
     function restoreAllFee() private {
-        feeTiers[0] = _previousFees;
+        _defaultFees = _previousFees;
     }
 
     function isExcludedFromFee(address account) public view returns(bool) {
         return _isExcludedFromFee[account];
-    }
-
-    function isBlacklisted(address account) public view returns(bool) {
-        return _isBlacklisted[account];
     }
 
     function _approve(
@@ -592,8 +565,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         uint256 amount
     )
     private
-    preventBlacklisted(owner, "BetCoin: Owner address is blacklisted")
-    preventBlacklisted(spender, "BetCoin: Spender address is blacklisted")
     {
         require(owner != address(0), "BEP20: approve from the zero address");
         require(spender != address(0), "BEP20: approve to the zero address");
@@ -608,9 +579,9 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         uint256 amount
     )
     private
-    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
-    preventBlacklisted(from, "BetCoin: From address is blacklisted")
-    preventBlacklisted(to, "BetCoin: To address is blacklisted")
+//    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
+//    preventBlacklisted(from, "BetCoin: From address is blacklisted")
+//    preventBlacklisted(to, "BetCoin: To address is blacklisted")
     isRouter(_msgSender())
     {
         require(from != address(0), "BEP20: transfer from the zero address");
@@ -651,18 +622,18 @@ contract BetCoinV2 is IERC20, Context, Ownable {
             takeFee = false;
         }
 
-        uint256 tierIndex = 0;
+        bool isDefaultFee = true;
 
         if(takeFee) {
-            tierIndex = _accountsTier[from];
+            isDefaultFee = !_whitelist[from]; // todo: test this
 
             if(_msgSender() != from) {
-                tierIndex = _accountsTier[_msgSender()];
+                isDefaultFee = !_whitelist[_msgSender()];
             }
         }
 
         //transfer amount, it will take tax, burn, liquidity fee
-        _tokenTransfer(from, to, amount, tierIndex, takeFee);
+        _tokenTransfer(from, to, amount, isDefaultFee, takeFee);
     }
 
     function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
@@ -722,70 +693,76 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     }
 
     //this method is responsible for taking all fee, if takeFee is true
-    function _tokenTransfer(address sender, address recipient, uint256 amount, uint256 tierIndex, bool takeFee) private {
+    function _tokenTransfer(address sender, address recipient, uint256 amount, bool _isDefaultFee, bool takeFee) private {
         if(!takeFee)
             removeAllFee();
 
         if (_isExcluded[sender] && !_isExcluded[recipient]) {
-            _transferFromExcluded(sender, recipient, amount, tierIndex);
+            _transferFromExcluded(sender, recipient, amount, _isDefaultFee);
         } else if (!_isExcluded[sender] && _isExcluded[recipient]) {
-            _transferToExcluded(sender, recipient, amount, tierIndex);
+            _transferToExcluded(sender, recipient, amount, _isDefaultFee);
         } else if (!_isExcluded[sender] && !_isExcluded[recipient]) {
-            _transferStandard(sender, recipient, amount, tierIndex);
+            _transferStandard(sender, recipient, amount, _isDefaultFee);
         } else if (_isExcluded[sender] && _isExcluded[recipient]) {
-            _transferBothExcluded(sender, recipient, amount, tierIndex);
+            _transferBothExcluded(sender, recipient, amount, _isDefaultFee);
         } else {
-            _transferStandard(sender, recipient, amount, tierIndex);
+            _transferStandard(sender, recipient, amount, _isDefaultFee);
         }
 
         if(!takeFee)
             restoreAllFee();
     }
 
-    function _transferBothExcluded(address sender, address recipient, uint256 tAmount, uint256 tierIndex) private {
-        FeeValues memory _values = _getValues(tAmount, tierIndex);
+    function _transferBothExcluded(address sender, address recipient, uint256 tAmount, bool _isDefaultFee) private {
+        FeeValues memory _values = _getValues(tAmount, _isDefaultFee);
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
         _tOwned[recipient] = _tOwned[recipient].add(_values.tTransferAmount);
         _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
-        _takeFees(sender, _values, tierIndex);
+        _takeFees(sender, _values, _isDefaultFee);
         _reflectFee(_values.rFee, _values.tFee);
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
-    function _transferStandard(address sender, address recipient, uint256 tAmount, uint256 tierIndex) private {
-        FeeValues memory _values = _getValues(tAmount, tierIndex);
+    function _transferStandard(address sender, address recipient, uint256 tAmount, bool _isDefaultFee) private {
+        FeeValues memory _values = _getValues(tAmount, _isDefaultFee);
         _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
-        _takeFees(sender, _values, tierIndex);
+        _takeFees(sender, _values, _isDefaultFee);
         _reflectFee(_values.rFee, _values.tFee);
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
-    function _transferToExcluded(address sender, address recipient, uint256 tAmount, uint256 tierIndex) private {
-        FeeValues memory _values = _getValues(tAmount, tierIndex);
+    function _transferToExcluded(address sender, address recipient, uint256 tAmount, bool _isDefaultFee) private {
+        FeeValues memory _values = _getValues(tAmount, _isDefaultFee);
         _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
         _tOwned[recipient] = _tOwned[recipient].add(_values.tTransferAmount);
         _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
-        _takeFees(sender, _values, tierIndex);
+        _takeFees(sender, _values, _isDefaultFee);
         _reflectFee(_values.rFee, _values.tFee);
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
-    function _transferFromExcluded(address sender, address recipient, uint256 tAmount, uint256 tierIndex) private {
-        FeeValues memory _values = _getValues(tAmount, tierIndex);
+    function _transferFromExcluded(address sender, address recipient, uint256 tAmount, bool _isDefaultFee) private {
+        FeeValues memory _values = _getValues(tAmount, _isDefaultFee);
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
-        _takeFees(sender, _values, tierIndex);
+        _takeFees(sender, _values, _isDefaultFee);
         _reflectFee(_values.rFee, _values.tFee);
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
-    function _takeFees(address sender, FeeValues memory values, uint256 tierIndex) private {
+    function _takeFees(address sender, FeeValues memory values, bool _isDefaultFee) private {
         _takeFee(sender, values.tLiquidity, address(this));
-        _takeFee(sender, values.tEchoSystem, feeTiers[tierIndex].ecoSystem);
-        _takeFee(sender, values.tOwner, feeTiers[tierIndex].owner);
+        if(_isDefaultFee) {
+            _takeFee(sender, values.tEchoSystem, _defaultFees.ecoSystem);
+            _takeFee(sender, values.tOwner, _defaultFees.owner);
+        }
+        else {
+            _takeFee(sender, values.tEchoSystem, _emptyFees.ecoSystem);
+            _takeFee(sender, values.tOwner, _emptyFees.owner);
+        }
         _takeBurn(sender, values.tBurn);
     }
 
@@ -809,12 +786,35 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         emit Transfer(sender, _burnAddress, _amount);
     }
 
-    function feeTiersLength() public view returns (uint) {
-        return feeTiers.length;
-    }
-
     function updateBurnAddress(address _newBurnAddress) external onlyOwner() {
         _burnAddress = _newBurnAddress;
         excludeFromReward(_newBurnAddress);
+    }
+
+    function withdraw() onlyOwner public {
+        uint256 balance = address(this).balance;
+        payable(msg.sender).transfer(balance);
+    }
+
+    /**
+     * @dev Withdraw any ERC20 token from this contract
+     * @param tokenAddress ERC20 token to withdraw
+     * @param to receiver address
+     * @param amount amount to withdraw
+     */
+    function withdrawERC20(
+        address tokenAddress,
+        address to,
+        uint256 amount
+    ) external virtual onlyOwner {
+        require(tokenAddress.isContract(), "ERC20 token address must be a contract");
+
+        IERC20 tokenContract = IERC20(tokenAddress);
+        require(
+            tokenContract.balanceOf(address(this)) >= amount,
+            "You are trying to withdraw more funds than available"
+        );
+
+        require(tokenContract.transfer(to, amount), "Fail on transfer");
     }
 }
