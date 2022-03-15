@@ -27,6 +27,7 @@ describe.skip("MafaCoin", function () {
         await contract.setTeamWallet(address1.address);
         await contract.setLotteryWallet(address2.address);
     });
+
     it("should have the correct name and symbol", async function () {
         const name = await contract.name();
         const symbol = await contract.symbol();
