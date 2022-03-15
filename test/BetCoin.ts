@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import {BetCoinV2, BetCoinV2__factory} from "../../typechain";
+import {BetCoinV2, BetCoinV2__factory} from "../typechain";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -11,7 +11,6 @@ let address2: SignerWithAddress;
 let address3: SignerWithAddress;
 let address4: SignerWithAddress;
 let address5: SignerWithAddress;
-
 
 describe("BetCoin", function () {
     before(async function () {
@@ -28,18 +27,18 @@ describe("BetCoin", function () {
         // await contract.setLotteryWallet(address2.address);
     });
 
-    it("Should be able to withdraw funds", async function () {
-        const Greeter = await ethers.getContractFactory("Greeter");
-        const greeter = await Greeter.deploy("Hello, world!");
-        await greeter.deployed();
-
-        expect(await greeter.greet()).to.equal("Hello, world!");
-
-        const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
-
-        // wait until the transaction is mined
-        await setGreetingTx.wait();
-
-        expect(await greeter.greet()).to.equal("Hola, mundo!");
-    });
+    // it("Should be able to withdraw funds", async function () {
+    //     const Greeter = await ethers.getContractFactory("Greeter");
+    //     const greeter = await Greeter.deploy("Hello, world!");
+    //     await greeter.deployed();
+    //
+    //     expect(await greeter.greet()).to.equal("Hello, world!");
+    //
+    //     const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
+    //
+    //     // wait until the transaction is mined
+    //     await setGreetingTx.wait();
+    //
+    //     expect(await greeter.greet()).to.equal("Hola, mundo!");
+    // });
 });

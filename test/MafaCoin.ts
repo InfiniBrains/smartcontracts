@@ -7,7 +7,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import uniswaprouter from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 import { bigNumberToFloat, expandTo18Decimals } from "./shared/utilities";
 
-describe("MafaCoin", function () {
+describe.skip("MafaCoin", function () {
     const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
     let contract: MafaCoin;
     let owner: SignerWithAddress;
