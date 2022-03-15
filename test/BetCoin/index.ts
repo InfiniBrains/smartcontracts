@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import {BetCoin, BetCoin__factory} from "../../typechain";
+import {BetCoinV2, BetCoinV2__factory} from "../../typechain";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
-let contract: BetCoin;
+let contract: BetCoinV2;
 let owner: SignerWithAddress;
 let address1: SignerWithAddress;
 let address2: SignerWithAddress;
@@ -19,13 +19,13 @@ describe("BetCoin", function () {
     });
 
     beforeEach(async function () {
-        const betcoinFactory = <BetCoin__factory>await ethers.getContractFactory("BetCoinV2");
+        const betcoinFactory = <BetCoinV2__factory>await ethers.getContractFactory("BetCoinV2");
         contract = await betcoinFactory.deploy();
         contract = await contract.deployed();
-        await contract.settransform(true);
-        await contract.setEnableContract(true);
-        await contract.setTeamWallet(address1.address);
-        await contract.setLotteryWallet(address2.address);
+        // await contract.settransform(true);
+        // await contract.setEnableContract(true);
+        // await contract.setTeamWallet(address1.address);
+        // await contract.setLotteryWallet(address2.address);
     });
 
     it("Should be able to withdraw funds", async function () {
