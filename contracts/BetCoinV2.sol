@@ -21,7 +21,9 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
-contract BetCoinV2 is IERC20, Context, Ownable {
+import "./TimeLockDexTransactions.sol";
+
+contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
     using Address for address;
 
@@ -61,11 +63,6 @@ contract BetCoinV2 is IERC20, Context, Ownable {
     mapping (address => mapping (address => uint256)) private _allowances;
     mapping (address => bool) private _isExcludedFromFee;
     mapping (address => bool) private _isExcluded;
-
-    /**
-      * @dev whitelist
-      */
-    mapping (address => bool) private _whitelist; // todo: probably a set works better
 
     // todo: improve this. we are iterating over this. and this might be costly
     address[] private _excluded;
@@ -120,21 +117,19 @@ contract BetCoinV2 is IERC20, Context, Ownable {
             }
             if(size > 0) {
                 // todo: test this!
-                bool senderTier = _whitelist[_sender];
+                bool senderTier = _isExcludedFromFee[_sender];
                 if(senderTier == false) {
                     IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
-                    try _routerCheck.factory() returns (address factory) {
-                        _whitelist[_sender] = true;
+                    try _routerCheck.factory() returns (address factory) { // todo: this test is too costly. improve this
+                        whitelistAddress(_sender);
                     } catch {
 
                     }
                 }
             }
         }
-
         _;
     }
-
 
     constructor () public {
         //        _rOwned[_msgSender()] = _rTotal;
@@ -324,22 +319,25 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         _isExcludedFromFee[account] = false;
     }
 
+    // todo: remove whitelist
     function whitelistAddress(address _account) public onlyOwner()
     {
         require(_account != address(0), "BetCoin: Invalid address");
-        _whitelist[_account] = true;
+        _isExcludedFromFee[_account] = true;
+        emit WhitelistAddress(_account);
     }
+    event WhitelistAddress(address _account);
 
     function excludeWhitelistedAddress(address _account) public onlyOwner() {
         require(_account != address(0), "BetCoin: Invalid address");
-        require(_whitelist[_account] == true, "BetCoin: Account is not in whitelist");
-        delete _whitelist[_account];
+        require(_isExcludedFromFee[_account] == true, "BetCoin: Account is not in whitelist");
+        delete _isExcludedFromFee[_account];
+        emit ExcludeWhitelistedAddress(_account);
     }
-
     event ExcludeWhitelistedAddress(address _account);
 
     function isWhitelisted(address _account) public view returns (bool) {
-        return _whitelist[_account];
+        return _isExcludedFromFee[_account];
     }
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
@@ -616,6 +614,13 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         }
     }
 
+    function setBuyTime(uint timeBetweenPurchases) public onlyOwner {
+        _setBuyTime(timeBetweenPurchases);
+    }
+    function setSellTime(uint timeBetweenSell) public onlyOwner {
+        _setSellTime(timeBetweenSell);
+    }
+
     function _transfer(
         address from,
         address to,
@@ -625,7 +630,7 @@ contract BetCoinV2 is IERC20, Context, Ownable {
 //    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
 //    preventBlacklisted(from, "BetCoin: From address is blacklisted")
 //    preventBlacklisted(to, "BetCoin: To address is blacklisted")
-    isRouter(_msgSender())
+    isRouter(_msgSender()) // todo: improve this check bc it is costly
     {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
@@ -673,10 +678,10 @@ contract BetCoinV2 is IERC20, Context, Ownable {
         bool isDefaultFee = true;
 
         if(takeFee) {
-            isDefaultFee = !_whitelist[from]; // todo: test this
+            isDefaultFee = !_isExcludedFromFee[from]; // todo: test this
 
             if(_msgSender() != from) {
-                isDefaultFee = !_whitelist[_msgSender()];
+                isDefaultFee = !_isExcludedFromFee[_msgSender()];
             }
         }
 
@@ -745,6 +750,13 @@ contract BetCoinV2 is IERC20, Context, Ownable {
 
     //this method is responsible for taking all fee, if takeFee is true
     function _tokenTransfer(address sender, address recipient, uint256 amount, bool _isDefaultFee, bool takeFee) private {
+        // check authorized time window
+        // Sell is when the automatedMarketMakerPairs[recipient] is true. otherwise it is buy
+//        if(automatedMarketMakerPairs[recipient] && !_isExcludedFromFee[recipient]) { // todo: check if this logic is correct. TEST IT!
+//            require(canSell(sender), "the recipient cannot sell yet");
+//            lockToSell(sender);
+//        }
+
         if(!takeFee)
             removeAllFee();
 
