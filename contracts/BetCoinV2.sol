@@ -82,11 +82,9 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     FeeTier private _emptyFees;
 
     IUniswapV2Router02 public uniswapV2Router;
-//    address public uniswapV2Pair;
     mapping(address => bool) public automatedMarketMakerPairs;
     address public dexPair;
 
-    address private _initializerAccount;
     address public _burnAddress;
 
     bool inSwapAndLiquify;
@@ -132,34 +130,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
 
     constructor () public {
-        //        _rOwned[_msgSender()] = _rTotal;
-        //
-        //        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-        //        // Create a uniswap pair for this new token
-        //        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
-        //        .createPair(address(this), _uniswapV2Router.WETH());
-        //
-        //        // set the rest of the contract variables
-        //        uniswapV2Router = _uniswapV2Router;
-        //
-        //        //exclude owner and this contract from fee
-        //        _isExcludedFromFee[owner()] = true;
-        //        _isExcludedFromFee[address(this)] = true;
-        //
-        //        __BetCoin_v2_init_unchained(_router);
-        //
-        //        emit Transfer(address(0), _msgSender(), _tTotal);
-
-        __BetCoin_v2_init_unchained(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-    }
-
-    //    function initialize(address _router) public initializer {
-    //        __Context_init_unchained();
-    //        __Ownable_init_unchained();
-    //        __BetCoin_v2_init_unchained(_router);
-    //    }
-
-    function __BetCoin_v2_init_unchained(address _router) internal {
         _name = "MatchBet Coin";
         _symbol = "MTC";
         _decimals = 18;
@@ -174,11 +144,10 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         numTokensSellToAddToLiquidity = 500 * 10**6 * _decimals;
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
-        _initializerAccount = _msgSender();
 
-        _rOwned[_initializerAccount] = _rTotal;
+        _rOwned[_msgSender()] = _rTotal;
 
-        uniswapV2Router = IUniswapV2Router02(_router);
+        uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
 
         // Create a uniswap pair for this new token
         dexPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
@@ -586,6 +555,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     function _checkIfDexIsAuthorized(address from, address to) private {
         // if the contract has symbol and the name is Cake-LP, it is a pancake pair
         if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
+            // todo: compare this with isrouter function
             try IUniswapV2Pair(from).symbol() returns (string memory _value) {
                 if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
                     revert("pair not allowed");
@@ -601,11 +571,8 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         }
     }
 
-    function setBuyTime(uint timeBetweenPurchases) public onlyOwner {
-        _setBuyTime(timeBetweenPurchases);
-    }
-    function setSellTime(uint timeBetweenSell) public onlyOwner {
-        _setSellTime(timeBetweenSell);
+    function setLockTime(uint timeBetweenTransactions) public onlyOwner {
+        _setLockTime(timeBetweenTransactions);
     }
 
     function _transfer(
@@ -739,10 +706,16 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     function _tokenTransfer(address sender, address recipient, uint256 amount, bool _isDefaultFee, bool takeFee) private {
         // check authorized time window
         // Sell is when the automatedMarketMakerPairs[recipient] is true. otherwise it is buy
-//        if(automatedMarketMakerPairs[recipient] && !_isExcludedFromFee[recipient]) { // todo: check if this logic is correct. TEST IT!
-//            require(canSell(sender), "the recipient cannot sell yet");
-//            lockToSell(sender);
-//        }
+        if(takeFee){
+            if(automatedMarketMakerPairs[recipient]) { // todo: check if this logic is correct. TEST IT!
+                require(canOperate(sender), "the sender cannot operate yet");
+                lockToOperate(sender);
+            }
+            else {
+                require(canOperate(recipient), "the recipient cannot sell yet");
+                lockToOperate(recipient);
+            }
+        }
 
         if(!takeFee)
             removeAllFee();

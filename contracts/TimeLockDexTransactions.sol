@@ -3,59 +3,31 @@
 pragma solidity ^0.8.9;
 
 contract TimeLockDexTransactions {
-    mapping (address => uint) private walletToPurchaseTime;
-    mapping (address => uint) private walletToSellime;
+    mapping (address => uint) private walletToTime;
 
-    uint immutable maxAllowedTime = 1 days;
-    uint private sellTime = 0; // 0 s per transaciton
-    uint private buyTime = 0; // 0 s per transaciton
+    uint private immutable _maxAllowedTime = 1 days;
+    uint private _lockTime = 0; // 0 s per transaciton
 
-    function getSellTime() external view returns(uint){
-        return sellTime;
-    }
-    function getButTime() external view returns(uint){
-        return buyTime;
+    function getLockTime() external view returns(uint){
+        return _lockTime;
     }
 
-    function getFromLastBuy(address wallet) public view returns (uint) {
-        return walletToPurchaseTime[wallet];
-    }
-    function getFromLastSell(address walletSell) public view returns (uint) {
-        return walletToSellime[walletSell];
+    function getFromLastTransaction(address wallet) public view returns (uint) {
+        return walletToTime[wallet];
     }
 
-    function lockToBuy(address addr) internal {
-        walletToPurchaseTime[addr] = block.timestamp + 1 days;
-    }
-    function lockToSell(address addr) internal {
-        walletToSellime[addr] = block.timestamp + 1 days;
+    function lockToOperate(address addr) internal {
+        walletToTime[addr] = block.timestamp + _lockTime;
     }
 
-    function canBuy(address addr) public view returns (bool){
-        return walletToPurchaseTime[addr] <= block.timestamp;
-    }
-    function canSell(address addr) public view returns (bool){
-        return walletToSellime[addr] <= block.timestamp;
+    function canOperate(address addr) public view returns (bool){
+        return walletToTime[addr] <= block.timestamp;
     }
 
-//    function lockToBuyOrSellForTime(uint256 lastBuyOrSellTime, uint256 lockTime) public view returns (bool) {
-//        if( lastBuyOrSellTime == 0 ) return true;
-//        uint256 crashTime = block.timestamp - lastBuyOrSellTime;
-//        if( crashTime >= lockTime ) return true;
-//        return false;
-//    }
-
-    function _setBuyTime(uint timeBetweenPurchases) internal {
-        require(timeBetweenPurchases <= maxAllowedTime, "max temp ban greater than the allowed");
-        buyTime = timeBetweenPurchases;
-        emit SetBuyTimeEvent(timeBetweenPurchases);
+    function _setLockTime(uint timeBetweenTransactions) internal {
+        require(timeBetweenTransactions <= _maxAllowedTime, "max temp ban greater than the allowed");
+        _lockTime = timeBetweenTransactions;
+        emit SetLockTimeEvent(timeBetweenTransactions);
     }
-    event SetBuyTimeEvent(uint timeBetweenPurchases);
-
-    function _setSellTime(uint timeBetweenSell) internal {
-        require(timeBetweenSell <= maxAllowedTime, "max temp ban greater than the allowed");
-        sellTime = timeBetweenSell;
-        emit SetSellTimeEvent(timeBetweenSell);
-    }
-    event SetSellTimeEvent(uint timeBetweenSell);
+    event SetLockTimeEvent(uint timeBetweenPurchases);
 }
