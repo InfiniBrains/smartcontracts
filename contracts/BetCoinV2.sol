@@ -29,7 +29,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     struct FeeTier {
         uint256 ecoSystemFee; // what is this?
-        uint256 liquidityFee;
+        uint256 liquidityFee; // fee to add funds to the DEX
         uint256 taxFee; // todo: is this to be used on reflection?
         uint256 ownerFee; // team fee
         uint256 burnFee;
@@ -129,7 +129,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         _;
     }
 
-    constructor () public {
+    constructor () {
         _name = "MatchBet Coin";
         _symbol = "MTC";
         _decimals = 18;
@@ -291,10 +291,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         emit IncludeInFee(account);
     }
     event IncludeInFee(address account);
-
-    function isWhitelisted(address _account) public view returns (bool) {
-        return _isExcludedFromFee[_account];
-    }
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
         uint256 _fees = _tier.ecoSystemFee.add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.ownerFee).add(_tier.burnFee);
@@ -546,13 +542,13 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         emit Approval(owner, spender, amount);
     }
 
-    function compareStrings(string memory a, string memory b) public view returns (bool) {
+    function compareStrings(string memory a, string memory b) public pure returns (bool) {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
     // todo: make it a modifier
     // todo: test this
-    function _checkIfDexIsAuthorized(address from, address to) private {
+    function _checkIfDexIsAuthorized(address from, address to) private view {
         // if the contract has symbol and the name is Cake-LP, it is a pancake pair
         if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
             // todo: compare this with isrouter function
