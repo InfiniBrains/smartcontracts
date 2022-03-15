@@ -30,7 +30,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     struct FeeTier {
         uint256 ecoSystemFee; // what is this?
         uint256 liquidityFee;
-        uint256 taxFee; // is this to be used on reflection?
+        uint256 taxFee; // todo: is this to be used on reflection?
         uint256 ownerFee; // team fee
         uint256 burnFee;
         address ecoSystem;
@@ -121,7 +121,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
                 if(senderTier == false) {
                     IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
                     try _routerCheck.factory() returns (address factory) { // todo: this test is too costly. improve this
-                        whitelistAddress(_sender);
+                        excludeFromFee(_sender);
                     } catch {
 
                     }
@@ -313,28 +313,15 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function excludeFromFee(address account) public onlyOwner() {
         _isExcludedFromFee[account] = true;
+        emit ExcludeFromFee(account);
     }
+    event ExcludeFromFee(address account);
 
     function includeInFee(address account) public onlyOwner() {
         _isExcludedFromFee[account] = false;
+        emit IncludeInFee(account);
     }
-
-    // todo: remove whitelist
-    function whitelistAddress(address _account) public onlyOwner()
-    {
-        require(_account != address(0), "BetCoin: Invalid address");
-        _isExcludedFromFee[_account] = true;
-        emit WhitelistAddress(_account);
-    }
-    event WhitelistAddress(address _account);
-
-    function excludeWhitelistedAddress(address _account) public onlyOwner() {
-        require(_account != address(0), "BetCoin: Invalid address");
-        require(_isExcludedFromFee[_account] == true, "BetCoin: Account is not in whitelist");
-        delete _isExcludedFromFee[_account];
-        emit ExcludeWhitelistedAddress(_account);
-    }
-    event ExcludeWhitelistedAddress(address _account);
+    event IncludeInFee(address account);
 
     function isWhitelisted(address _account) public view returns (bool) {
         return _isExcludedFromFee[_account];
