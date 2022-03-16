@@ -29,11 +29,11 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     struct FeeTier {
         uint256 ecoSystemFee; // what is this?
+        address ecoSystem;
         uint256 liquidityFee; // fee to add funds to the DEX
         uint256 taxFee; // todo: is this to be used on reflection?
         uint256 ownerFee; // team fee
         uint256 burnFee;
-        address ecoSystem;
         address owner;
     }
 
@@ -42,7 +42,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 rTransferAmount;
         uint256 rFee;
         uint256 tTransferAmount;
-        uint256 tEchoSystem;
+        uint256 tEcoSystem;
         uint256 tLiquidity;
         uint256 tFee;
         uint256 tOwner;
@@ -51,7 +51,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     struct tFeeValues {
         uint256 tTransferAmount;
-        uint256 tEchoSystem;
+        uint256 tEcoSystem;
         uint256 tLiquidity;
         uint256 tFee;
         uint256 tOwner;
@@ -83,7 +83,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     IUniswapV2Router02 public uniswapV2Router;
     mapping(address => bool) public automatedMarketMakerPairs;
-    address public dexPair;
+    address public defaultPair;
 
     address public _burnAddress;
 
@@ -101,6 +101,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 tokensIntoLiquidity
     );
 
+    // @dev just a protection
     modifier lockTheSwap {
         inSwapAndLiquify = true;
         _;
@@ -150,8 +151,8 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
 
         // Create a uniswap pair for this new token
-        dexPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
-        _setAutomatedMarketMakerPair(dexPair, true);
+        defaultPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
+        _setAutomatedMarketMakerPair(defaultPair, true);
 
         //exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
@@ -162,8 +163,19 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
+    /**
+      * @dev create and add a new pair of token
+      */
+    function createNewPair(address tokenAddress) public onlyOwner {
+        address newPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this) ,tokenAddress);
+        _setAutomatedMarketMakerPair(newPair, true);
+        emit CreateNewPair(tokenAddress, newPair);
+    }
+    event CreateNewPair(address tokenAddress, address newPair);
+
+
     function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
-        require(pair != dexPair, "cannot be removed");
+        require(pair != defaultPair, "cannot be removed");
         _setAutomatedMarketMakerPair(pair, value);
     }
 
@@ -433,11 +445,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
     event UpdateRouter(address _uniswapV2Router);
 
-    function updateDefaultPair(address _uniswapV2Pair) public onlyOwner() {
-        dexPair = _uniswapV2Pair;
-        _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
-    }
-
     function setDefaultSettings() external onlyOwner() {
         swapAndLiquifyEnabled = true;
     }
@@ -463,9 +470,9 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function _getValues(uint256 tAmount, bool _getDefault) private view returns (FeeValues memory) {
         tFeeValues memory tValues = _getTValues(tAmount, _getDefault);
-        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEchoSystem).add(tValues.tOwner).add(tValues.tBurn);
+        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEcoSystem).add(tValues.tOwner).add(tValues.tBurn);
         (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tValues.tFee, tTransferFee, _getRate());
-        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEchoSystem, tValues.tLiquidity, tValues.tFee, tValues.tOwner, tValues.tBurn);
+        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEcoSystem, tValues.tLiquidity, tValues.tFee, tValues.tOwner, tValues.tBurn);
     }
 
     function _getTValues(uint256 tAmount, bool _getDefault) private view returns (tFeeValues memory) {
@@ -479,7 +486,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
             calculateFee(tAmount, tier.burnFee)
         );
 
-        tValues.tTransferAmount = tAmount.sub(tValues.tEchoSystem).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tOwner).sub(tValues.tBurn);
+        tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tOwner).sub(tValues.tBurn);
         return tValues;
     }
 
@@ -587,7 +594,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         require(amount > 0, "Transfer amount must be greater than zero");
 
         // make it a modifier
-        _checkIfDexIsAuthorized(from,to);
+        _checkIfDexIsAuthorized(from, to);
 
         // todo: add costly fees if the amount is above the _maxTxAmount.
         // todo: The more amount is bigger than _maxTxAmount, the more tax increases (linear)
@@ -775,11 +782,11 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     function _takeFees(address sender, FeeValues memory values, bool _isDefaultFee) private {
         _takeFee(sender, values.tLiquidity, address(this));
         if(_isDefaultFee) {
-            _takeFee(sender, values.tEchoSystem, _defaultFees.ecoSystem);
+            _takeFee(sender, values.tEcoSystem, _defaultFees.ecoSystem);
             _takeFee(sender, values.tOwner, _defaultFees.owner);
         }
         else {
-            _takeFee(sender, values.tEchoSystem, _emptyFees.ecoSystem);
+            _takeFee(sender, values.tEcoSystem, _emptyFees.ecoSystem);
             _takeFee(sender, values.tOwner, _emptyFees.owner);
         }
         _takeBurn(sender, values.tBurn);
