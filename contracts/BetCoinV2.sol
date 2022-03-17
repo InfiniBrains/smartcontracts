@@ -28,13 +28,11 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     using Address for address;
 
     struct FeeTier {
-        uint256 ecoSystemFee; // what is this?
+        uint256 ecoSystemFee;
         address ecoSystem;
         uint256 liquidityFee; // fee to add funds to the DEX
         uint256 taxFee; // todo: is this to be used on reflection?
-        uint256 ownerFee; // team fee
         uint256 burnFee;
-        address owner;
     }
 
     struct FeeValues {
@@ -45,7 +43,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 tEcoSystem;
         uint256 tLiquidity;
         uint256 tFee;
-        uint256 tOwner;
         uint256 tBurn;
     }
 
@@ -54,7 +51,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 tEcoSystem;
         uint256 tLiquidity;
         uint256 tFee;
-        uint256 tOwner;
         uint256 tBurn;
     }
 
@@ -186,8 +182,8 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
 
     function __BetCoin_tiers_init() internal {
-        _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
-        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, ownerFee:0, burnFee:0, ecoSystem:address(0), owner:address(0)});
+        _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, burnFee:0, ecoSystem:address(0)});
+        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, burnFee:0, ecoSystem:address(0)});
     }
 
     function name() public view returns (string memory) {
@@ -305,7 +301,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     event IncludeInFee(address account);
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
-        uint256 _fees = _tier.ecoSystemFee.add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.ownerFee).add(_tier.burnFee);
+        uint256 _fees = _tier.ecoSystemFee.add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.burnFee);
         require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
 
         return _tier;
@@ -315,7 +311,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 _fees = _tier.ecoSystemFee
         .add(_tier.liquidityFee)
         .add(_tier.taxFee)
-        .add(_tier.ownerFee)
         .add(_tier.burnFee)
         .sub(_oldFee)
         .add(_newFee);
@@ -371,22 +366,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     event SetTaxFeePercent(uint256 _empty, uint256 _default);
 
-    function setOwnerFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
-        if(_default != _defaultFees.ownerFee) {
-            checkFeesChanged(_defaultFees, _defaultFees.ownerFee, _default);
-            _defaultFees.ownerFee = _default;
-        }
-
-        if(_empty != _emptyFees.ownerFee) {
-            checkFeesChanged(_emptyFees, _emptyFees.ownerFee, _empty);
-            _emptyFees.ownerFee = _empty;
-        }
-
-        emit SetOwnerFeePercent(_empty, _default);
-    }
-
-    event SetOwnerFeePercent(uint256 _empty, uint256 _default);
-
     function setBurnFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
         if(_default != _defaultFees.burnFee) {
             checkFeesChanged(_defaultFees, _defaultFees.burnFee, _default);
@@ -421,24 +400,6 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     event SetEcoSystemFeeAddress(address _empty, address _default);
 
-    function setOwnerFeeAddress(address _empty, address _default) external onlyOwner() {
-        if(_default != _defaultFees.owner) {
-            require(_default != address(0), "BetCoin: Address Zero is not allowed");
-            includeInReward(_defaultFees.owner);
-            _defaultFees.owner = _default;
-            excludeFromReward(_default);
-        }
-        if(_empty != _emptyFees.owner) {
-            require(_empty != address(0), "BetCoin: Address Zero is not allowed");
-            includeInReward(_emptyFees.owner);
-            _emptyFees.owner = _empty;
-            excludeFromReward(_empty);
-        }
-        emit SetOwnerFeeAddress(_empty, _default);
-    }
-
-    event SetOwnerFeeAddress(address _empty, address _default);
-
     function updateRouter(address _uniswapV2Router) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
         emit UpdateRouter(_uniswapV2Router);
@@ -470,9 +431,9 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function _getValues(uint256 tAmount, bool _getDefault) private view returns (FeeValues memory) {
         tFeeValues memory tValues = _getTValues(tAmount, _getDefault);
-        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEcoSystem).add(tValues.tOwner).add(tValues.tBurn);
+        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEcoSystem).add(tValues.tBurn);
         (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tValues.tFee, tTransferFee, _getRate());
-        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEcoSystem, tValues.tLiquidity, tValues.tFee, tValues.tOwner, tValues.tBurn);
+        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEcoSystem, tValues.tLiquidity, tValues.tFee, tValues.tBurn);
     }
 
     function _getTValues(uint256 tAmount, bool _getDefault) private view returns (tFeeValues memory) {
@@ -482,11 +443,10 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
             calculateFee(tAmount, tier.ecoSystemFee),
             calculateFee(tAmount, tier.liquidityFee),
             calculateFee(tAmount, tier.taxFee),
-            calculateFee(tAmount, tier.ownerFee),
             calculateFee(tAmount, tier.burnFee)
         );
 
-        tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tOwner).sub(tValues.tBurn);
+        tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tBurn);
         return tValues;
     }
 
@@ -699,10 +659,11 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
             tokenAmount,
             0, // slippage is unavoidable
             0, // slippage is unavoidable
-            owner(),
+//            owner(), // todo: test it! send the cake to the sender
+            _msgSender(),
             block.timestamp
         );
-        // todo: inspect if some tokens still remains in the contract
+        // todo: inspect if some tokens still remains in the contract - slippage problem
     }
 
     //this method is responsible for taking all fee, if takeFee is true
@@ -781,13 +742,12 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function _takeFees(address sender, FeeValues memory values, bool _isDefaultFee) private {
         _takeFee(sender, values.tLiquidity, address(this));
+
         if(_isDefaultFee) {
             _takeFee(sender, values.tEcoSystem, _defaultFees.ecoSystem);
-            _takeFee(sender, values.tOwner, _defaultFees.owner);
         }
         else {
             _takeFee(sender, values.tEcoSystem, _emptyFees.ecoSystem);
-            _takeFee(sender, values.tOwner, _emptyFees.owner);
         }
         _takeBurn(sender, values.tBurn);
     }
