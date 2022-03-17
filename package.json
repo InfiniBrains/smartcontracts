@@ -39,6 +39,7 @@
   },
   "scripts": {
     "test": "hardhat test",
+    "coverage": "hardhat coverage",
     "compile": "hardhat compile",
     "fork": "hardhat node & disown",
     "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",

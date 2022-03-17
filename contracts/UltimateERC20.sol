@@ -23,7 +23,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "./TimeLockDexTransactions.sol";
 
-contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
+contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
     using Address for address;
 
@@ -104,31 +104,20 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
         inSwapAndLiquify = false;
     }
 
-    modifier isRouter(address _sender) {
-        {
-            uint32 size;
-            assembly {
-                size := extcodesize(_sender)
-            }
-            if(size > 0) {
-                // todo: test this!
-                bool senderTier = _isExcludedFromFee[_sender];
-                if(senderTier == false) {
-                    IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
-                    try _routerCheck.factory() returns (address factory) { // todo: this test is too costly. improve this
-                        excludeFromFee(_sender);
-                    } catch {
-
-                    }
-                }
-            }
+    modifier ensureRouterIsExcluded(address _sender) {
+        if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
+            // todo: test this!
+            IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
+            try _routerCheck.factory() returns (address factory) { // todo: this test is too costly. improve this
+                excludeFromFee(_sender);
+            } catch {}
         }
         _;
     }
 
-    constructor () {
-        _name = "MatchBet Coin";
-        _symbol = "MTC";
+    constructor (string memory name, string memory symbol) {
+        _name = name;
+        _symbol = symbol;
         _decimals = 18;
 
         _tTotal = 1000000 * 10**6 * _decimals;
@@ -411,9 +400,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
 
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
-        _maxTxAmount = _tTotal.mul(maxTxPercent).div(
-            10**4
-        );
+        _maxTxAmount = _tTotal.mul(maxTxPercent).div(10**4);
     }
 
     function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner() {
@@ -547,7 +534,7 @@ contract BetCoinV2 is IERC20, Context, Ownable, TimeLockDexTransactions {
 //    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
 //    preventBlacklisted(from, "BetCoin: From address is blacklisted")
 //    preventBlacklisted(to, "BetCoin: To address is blacklisted")
-    isRouter(_msgSender()) // todo: improve this check bc it is costly
+    ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly
     {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
