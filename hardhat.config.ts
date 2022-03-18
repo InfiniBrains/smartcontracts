@@ -19,7 +19,7 @@ if (!mnemonic) {
   console.warn("RANDOM MNEMONIC used: " + mnemonic);
 }
 
-let wallet = Wallet.fromMnemonic(mnemonic);
+const wallet = Wallet.fromMnemonic(mnemonic);
 console.log("Using wallet with address: " + wallet.address);
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -34,6 +34,22 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
+function getForkingSettings() {
+  const url = process.env.CHAINSTACK_PROVIDER;
+  console.log("forking");
+  if (url == null) {
+    console.warn("........................................................................");
+    console.warn("you need to set CHAINSTACK_PROVIDER to fork the chain and test properly.");
+    console.warn("........................................................................");
+    return { accounts: { mnemonic } };
+  } else {
+    console.log("URL set");
+    return {
+      accounts: { mnemonic },
+      forking: { url },
+    };
+  }
+}
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -46,7 +62,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 800,
       },
-    }
+    },
   },
   networks: {
     local: {
@@ -63,12 +79,7 @@ const config: HardhatUserConfig = {
       chainId: 56,
       accounts: { mnemonic },
     },
-    hardhat: {
-      accounts: { mnemonic },
-      // forking: {
-      //   url: `${process.env.CHAINSTACK_PROVIDER}`,
-      // },
-    },
+    hardhat: getForkingSettings(),
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,

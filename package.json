@@ -38,10 +38,10 @@
     "typescript": "^4.5.5"
   },
   "scripts": {
-    "test": "hardhat test",
+    "test": "hardhat compile && hardhat test",
     "coverage": "hardhat coverage",
     "compile": "hardhat compile",
-    "fork": "hardhat node & disown",
+    "fork": "hardhat node",
     "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",
     "deploy:tolsta:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
   }
