@@ -120,20 +120,20 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         _symbol = symbol;
         _decimals = 18;
 
-        _tTotal = 1000000 * 10**6 * _decimals;
+        _tTotal = 1000000 * 10**6 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
         _maxFee = 1000;
 
         swapAndLiquifyEnabled = true;
 
-        _maxTxAmount = 5000 * 10**6 * _decimals;
-        numTokensSellToAddToLiquidity = 500 * 10**6 * _decimals;
+        _maxTxAmount = 5000 * 10**6 * 10**_decimals;
+        numTokensSellToAddToLiquidity = 500 * 10**6 * 10**_decimals;
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
 
         _rOwned[_msgSender()] = _rTotal;
 
-        uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
+        uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F); // bsc mainnet router
 
         // Create a uniswap pair for this new token
         defaultPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
