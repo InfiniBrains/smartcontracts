@@ -38,9 +38,15 @@ function getForkingSettings() {
   const url = process.env.CHAINSTACK_PROVIDER;
   console.log("forking");
   if (url == null) {
-    console.warn("........................................................................");
-    console.warn("you need to set CHAINSTACK_PROVIDER to fork the chain and test properly.");
-    console.warn("........................................................................");
+    console.warn(
+      "........................................................................"
+    );
+    console.warn(
+      "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
+    );
+    console.warn(
+      "........................................................................"
+    );
     return { accounts: { mnemonic } };
   } else {
     console.log("URL set");
@@ -84,6 +90,10 @@ const config: HardhatUserConfig = {
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
+  },
+  typechain: {
+    outDir: "typechain",
+    target: "ethers-v5",
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
