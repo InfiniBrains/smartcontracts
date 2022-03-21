@@ -9,6 +9,7 @@ import "solidity-coverage";
 import { Wallet } from "ethers";
 
 import { resolve } from "path";
+import { HardhatNetworkUserConfig } from "hardhat/types/config";
 
 dotenv.config({ path: resolve(__dirname, "./.env") });
 
@@ -34,21 +35,35 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
-function getForkingSettings() {
+function getForkingSettings(): HardhatNetworkUserConfig {
   const url = process.env.CHAINSTACK_PROVIDER;
   console.log("forking");
+
+  let ret: HardhatNetworkUserConfig = {};
+
   if (url == null) {
-    console.warn("........................................................................");
-    console.warn("you need to set CHAINSTACK_PROVIDER to fork the chain and test properly.");
-    console.warn("........................................................................");
-    return { accounts: { mnemonic } };
+    console.warn(
+      "........................................................................"
+    );
+    console.warn(
+      "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
+    );
+    console.warn(
+      "........................................................................"
+    );
+    ret = { accounts: { mnemonic } };
   } else {
     console.log("URL set");
-    return {
+    ret = {
       accounts: { mnemonic },
       forking: { url },
     };
   }
+  // ret.mining = {
+  //   auto: false,
+  //   interval: [3000, 6000],
+  // };
+  return ret;
 }
 
 const config: HardhatUserConfig = {
@@ -93,6 +108,9 @@ const config: HardhatUserConfig = {
     cache: "./cache",
     sources: "./contracts",
     tests: "./test",
+  },
+  typechain: {
+    outDir: "typechain",
   },
 };
 
