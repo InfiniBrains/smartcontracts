@@ -168,7 +168,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         emit AddNewPair(tokenAddress, newPair);
         return newPair;
     }
-    event AddNewPair(address tokenAddress, address newPair);
+    event AddNewPair(address indexed tokenAddress, address indexed newPair);
 
 
     function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
