@@ -23,6 +23,8 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "./TimeLockDexTransactions.sol";
 
+//import "hardhat/console.sol";
+
 contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
     using Address for address;
@@ -63,7 +65,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     // todo: improve this. we are iterating over this. and this might be costly
     address[] private _excluded;
 
-    uint256 private constant MAX = ~uint256(0);
+    uint256 private constant MAX = type(uint256).max;
     uint256 private _tTotal;
     uint256 private _rTotal;
     uint256 private _tFeeTotal;
@@ -104,6 +106,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         inSwapAndLiquify = false;
     }
 
+    // @dev ensures the route is excluded form fees
     modifier ensureRouterIsExcluded(address _sender) {
         if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
             // todo: test this!
@@ -115,19 +118,20 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         _;
     }
 
+    // @dev the constructor
     constructor (string memory name, string memory symbol) {
         _name = name;
         _symbol = symbol;
-        _decimals = 18;
+        _decimals = 9;
 
-        _tTotal = 1000000 * 10**6 * 10**_decimals;
+        _tTotal = 1000000000 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
         _maxFee = 1000;
 
         swapAndLiquifyEnabled = true;
 
-        _maxTxAmount = 5000 * 10**6 * 10**_decimals;
-        numTokensSellToAddToLiquidity = 500 * 10**6 * 10**_decimals;
+        _maxTxAmount = 5000 * 10**_decimals;
+        numTokensSellToAddToLiquidity = 50 * 10**_decimals;
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
 
@@ -142,21 +146,29 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         //exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
+        emit ExcludeFromFee(owner());
+        emit ExcludeFromFee(address(this));
 
-        __BetCoin_tiers_init();
+//        // todo: check if this is really necessary
+//        _isExcludedFromReward[owner()] = true;
+//        _isExcludedFromReward[address(this)] = true;
 
+        // set fees
+        // 50 is 0,5% 500 is 5%
+        _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:50, taxFee:50, burnFee:0, ecoSystem:address(this)});
+        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:500, taxFee:500, burnFee:0, ecoSystem:address(this)});
+        
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
-    /**
-      * @dev create and add a new pair of token
-      */
-    function createNewPair(address tokenAddress) public onlyOwner {
+    // @dev create and add a new pair for a given token
+    function addNewPair(address tokenAddress) external onlyOwner returns (address np) {
         address newPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this) ,tokenAddress);
         _setAutomatedMarketMakerPair(newPair, true);
-        emit CreateNewPair(tokenAddress, newPair);
+        emit AddNewPair(tokenAddress, newPair);
+        return newPair;
     }
-    event CreateNewPair(address tokenAddress, address newPair);
+    event AddNewPair(address tokenAddress, address newPair);
 
 
     function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
@@ -170,19 +182,17 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
 
-    function __BetCoin_tiers_init() internal {
-        _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:500, taxFee:500, burnFee:0, ecoSystem:address(0)});
-        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:5000, taxFee:5000, burnFee:0, ecoSystem:address(0)});
-    }
-
+    // @dev the default name of the contract
     function name() public view returns (string memory) {
         return _name;
     }
 
+    // @dev the symbol of the contract
     function symbol() public view returns (string memory) {
         return _symbol;
     }
 
+    // @dev the numbers of decimals the token have
     function decimals() public view returns (uint8) {
         return _decimals;
     }
@@ -262,7 +272,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         }
         _isExcludedFromReward[account] = true;
         _excluded.push(account);
+        emit ExcludeFromReward(account);
     }
+    event ExcludeFromReward(address account);
 
     function includeInReward(address account) public onlyOwner() {
         require(_isExcludedFromReward[account], "Account is already included");
@@ -275,7 +287,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
                 break;
             }
         }
+        emit IncludeInReward(account);
     }
+    event IncludeInReward(address account);
 
     function excludeFromFee(address account) public onlyOwner() {
         _isExcludedFromFee[account] = true;
@@ -291,7 +305,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
         uint256 _fees = _tier.ecoSystemFee.add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.burnFee);
-        require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
+        require(_fees <= _maxFee, "Fees exceeded max limitation");
 
         return _tier;
     }
@@ -301,10 +315,10 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         .add(_tier.liquidityFee)
         .add(_tier.taxFee)
         .add(_tier.burnFee)
-        .sub(_oldFee)
-        .add(_newFee);
+        .add(_newFee)
+        .sub(_oldFee);
 
-        require(_fees <= _maxFee, "BetCoin: Fees exceeded max limitation");
+        require(_fees <= _maxFee, "Fees exceeded max limitation");
     }
 
     function setEcoSystemFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
@@ -373,13 +387,13 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function setEcoSystemFeeAddress(address _empty, address _default) external onlyOwner() {
         if(_default != _defaultFees.ecoSystem) {
-            require(_default != address(0), "BetCoin: Address Zero is not allowed");
+            require(_default != address(0), "Address Zero is not allowed");
             includeInReward(_defaultFees.ecoSystem);
             _defaultFees.ecoSystem = _default;
             excludeFromReward(_default);
         }
         if(_empty != _emptyFees.ecoSystem) {
-            require(_empty != address(0), "BetCoin: Address Zero is not allowed");
+            require(_empty != address(0), "Address Zero is not allowed");
             includeInReward(_emptyFees.ecoSystem);
             _emptyFees.ecoSystem = _empty;
             excludeFromReward(_empty);
@@ -432,7 +446,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
             calculateFee(tAmount, tier.taxFee),
             calculateFee(tAmount, tier.burnFee)
         );
-
         tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tBurn);
         return tValues;
     }
@@ -531,9 +544,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 amount
     )
     private
-//    preventBlacklisted(_msgSender(), "BetCoin: Address is blacklisted")
-//    preventBlacklisted(from, "BetCoin: From address is blacklisted")
-//    preventBlacklisted(to, "BetCoin: To address is blacklisted")
+//    preventBlacklisted(_msgSender(), "Address is blacklisted")
+//    preventBlacklisted(from, "From address is blacklisted")
+//    preventBlacklisted(to, "To address is blacklisted")
     ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly
     {
         require(from != address(0), "BEP20: transfer from the zero address");
