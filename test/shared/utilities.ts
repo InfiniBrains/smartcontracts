@@ -5,21 +5,28 @@ import { Artifact } from "hardhat/types";
 import axios from "axios";
 
 export function expandTo18Decimals(n: number): BigNumber {
-    return ethers.BigNumber.from(n).mul(ethers.BigNumber.from(10).pow(18));
+  return ethers.BigNumber.from(n).mul(ethers.BigNumber.from(10).pow(18));
 }
+
+export function expandTo9Decimals(value: string): BigNumber {
+  return ethers.utils.parseUnits(value, "9");
+}
+
 export function bigNumberToFloat(n: BigNumber): number {
-    return parseFloat(ethers.utils.formatEther(n));
+  return parseFloat(ethers.utils.formatEther(n));
 }
 export function daysToUnixDate(days: number): number {
-    return days * 24 * 60 * 60;
+  return days * 24 * 60 * 60;
 }
 export async function getMAFAtoBUSDprice(): Promise<number> {
-    const response = await axios("https://api.pancakeswap.info/api/v2/tokens/0xaf44400a99a9693bf3c2e89b02652babacc5cdb9");
-    const data = await response.data;
-    return parseFloat(data.data.price);
+  const response = await axios(
+    "https://api.pancakeswap.info/api/v2/tokens/0xaf44400a99a9693bf3c2e89b02652babacc5cdb9"
+  );
+  const data = await response.data;
+  return parseFloat(data.data.price);
 }
 export function range(start: number, end: number): number[] {
-    return Array(end - start + 1)
-        .fill(0)
-        .map((_, idx) => start + idx);
+  return Array(end - start + 1)
+    .fill(0)
+    .map((_, idx) => start + idx);
 }
