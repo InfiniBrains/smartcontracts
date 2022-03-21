@@ -2,6 +2,8 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { UltimateERC20, UltimateERC20__factory } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { utils } from "ethers";
+import { AddressType } from "typechain";
 
 describe("UltimateCoin", function () {
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -24,30 +26,40 @@ describe("UltimateCoin", function () {
     );
     contract = await ultimateFactory.deploy("Test", "TST");
     contract = await contract.deployed();
-
-    // await contract.settransform(true);
-    // await contract.setEnableContract(true);
-    // await contract.setTeamWallet(address1.address);
-    // await contract.setLotteryWallet(address2.address);
   });
 
-  it("Should have correct names", async function () {
+  it("Should be contructed properly", async function () {
     expect(await contract.name()).to.equal("Test");
     expect(await contract.symbol()).to.equal("TST");
+    expect(await contract.totalSupply()).to.equal(
+      utils.parseUnits("1000000000", 9).toString()
+    );
+    expect(await contract.decimals()).to.equal(9);
+    expect(await contract.balanceOf(owner.address)).to.equal(
+      await contract.totalSupply()
+    );
   });
 
-  // it("Should be able to withdraw funds", async function () {
-  //     const Greeter = await ethers.getContractFactory("Greeter");
-  //     const greeter = await Greeter.deploy("Hello, world!");
-  //     await greeter.deployed();
-  //
-  //     expect(await greeter.greet()).to.equal("Hello, world!");
-  //
-  //     const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
-  //
-  //     // wait until the transaction is mined
-  //     await setGreetingTx.wait();
-  //
-  //     expect(await greeter.greet()).to.equal("Hola, mundo!");
+  // todo: fix this. the returned type is coming as transaction but it sohuld be address(string)
+  // it("should be able to create a new pair", async function () {
+  //   const newpair = await contract.addNewPair(
+  //     "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
+  //   ); // BUSD address
+  //   console.log(newpair);
+  //   expect(await contract.automatedMarketMakerPairs(newpair)).to.equal(true);
   // });
+
+  it("Should be able to transfer", async function () {
+    await contract
+      .connect(owner)
+      .transfer(address1.address, utils.parseUnits("1", "9"));
+    let balance = await contract.connect(address1).balanceOf(address1.address);
+    console.log(utils.formatEther(balance));
+
+    await contract
+      .connect(address1)
+      .transfer(address2.address, utils.parseUnits("0.5", "9"));
+    balance = await contract.connect(address2).balanceOf(address1.address);
+    console.log(utils.formatEther(balance));
+  });
 });
