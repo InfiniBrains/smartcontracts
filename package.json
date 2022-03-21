@@ -40,11 +40,11 @@
     "typescript": "^4.6.2"
   },
   "scripts": {
+    "clean": "rimraf artifacts cache typechain coverage",
     "test": "hardhat compile && hardhat test",
     "coverage": "hardhat coverage",
     "start:coverage:server": "cd coverage & python -m http.server",
-    "coverage:report": "rimraf artifacts cache typechain && hardhat compile && hardhat test && hardhat coverage && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
-    "coverage:full": "rimraf artifacts cache typechain && hardhat compile && hardhat coverage",
+    "coverage:full": "npm run clean && hardhat compile && hardhat test && hardhat coverage && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
     "compile": "hardhat compile",
     "fork": "hardhat node",
     "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",
