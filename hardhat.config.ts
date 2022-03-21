@@ -113,9 +113,6 @@ const config: HardhatUserConfig = {
     sources: "./contracts",
     tests: "./test",
   },
-  typechain: {
-    outDir: "typechain",
-  },
 };
 
 export default config;
