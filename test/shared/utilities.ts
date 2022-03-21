@@ -2,7 +2,6 @@ import { BigNumber } from "ethers";
 import { artifacts, ethers, waffle } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Artifact } from "hardhat/types";
-import { MafaCoin } from "../../typechain";
 import axios from "axios";
 
 export function expandTo18Decimals(n: number): BigNumber {
@@ -14,19 +13,6 @@ export function bigNumberToFloat(n: BigNumber): number {
 export function daysToUnixDate(days: number): number {
     return days * 24 * 60 * 60;
 }
-export async function deployMafaCoin(owner: SignerWithAddress) {
-    const mafacoinArtifact: Artifact = await artifacts.readArtifact("MafaCoin");
-    const mafacoin = <MafaCoin>await waffle.deployContract(owner, mafacoinArtifact);
-
-    await mafacoin.afterPreSale();
-    await mafacoin.setBurnFee(0);
-    await mafacoin.setTeamBuyFee(0);
-    await mafacoin.setTeamSellFee(0);
-    await mafacoin.setLiquidyFee(0);
-    await mafacoin.setLotteryFee(0);
-    return mafacoin;
-}
-
 export async function getMAFAtoBUSDprice(): Promise<number> {
     const response = await axios("https://api.pancakeswap.info/api/v2/tokens/0xaf44400a99a9693bf3c2e89b02652babacc5cdb9");
     const data = await response.data;

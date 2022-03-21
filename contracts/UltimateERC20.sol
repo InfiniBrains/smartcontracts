@@ -23,7 +23,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "./TimeLockDexTransactions.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
@@ -126,7 +126,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
         _tTotal = 1000000000 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
-        _maxFee = 1000;
+        _maxFee = 1000; // 10%
 
         swapAndLiquifyEnabled = true;
 
@@ -156,7 +156,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         // set fees
         // 50 is 0,5% 500 is 5%
         _emptyFees = FeeTier({ecoSystemFee:0, liquidityFee:50, taxFee:50, burnFee:0, ecoSystem:address(this)});
-        _defaultFees = FeeTier({ecoSystemFee:50, liquidityFee:500, taxFee:500, burnFee:0, ecoSystem:address(this)});
+        _defaultFees = FeeTier({ecoSystemFee:250, liquidityFee:250, taxFee:500, burnFee:0, ecoSystem:address(this)});
         
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
