@@ -4,7 +4,6 @@ import { ethers } from "hardhat";
 import { UltimateERC20, UltimateERC20__factory } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { utils } from "ethers";
-import exp from "constants";
 import { expandTo9Decimals } from "./shared/utilities";
 
 describe.only("UltimateCoin", function () {
@@ -62,45 +61,94 @@ describe.only("UltimateCoin", function () {
   });
 
   it("Should be able to transfer without fees", async function () {
+    // owner transfer: should charge small fees
+    await contract
+      .connect(owner)
+      .transfer(address1.address, expandTo9Decimals("1"));
+    expect(
+      await contract.connect(address1).balanceOf(address1.address)
+    ).to.equal(expandTo9Decimals("0.99"));
+
     await contract.setBurnFeePercent(0, 0);
     await contract.setEcoSystemFeePercent(0, 0);
+    await contract.setRewardFeePercent(0, 0);
     await contract.setLiquidityFeePercent(0, 0);
     await contract.setTaxFeePercent(0, 0);
 
-    await contract
-      .connect(owner)
-      .transfer(address1.address, expandTo9Decimals("1"));
-    expect(
-      await contract.connect(address1).balanceOf(address1.address)
-    ).to.equal(expandTo9Decimals("1"));
-  });
-
-  it("Should be able to transfer with BURN fee", async function () {
-    await contract.setEcoSystemFeePercent(0, 0);
-    await contract.setLiquidityFeePercent(0, 0);
-    await contract.setTaxFeePercent(0, 0);
-    await contract.setBurnFeePercent(0, 1000);
-
-    // the transaction is from a excluded one: the owner. no fee should be taken
-    await contract
-      .connect(owner)
-      .transfer(address1.address, expandTo9Decimals("1"));
-    expect(
-      await contract.connect(address1).balanceOf(address1.address)
-    ).to.equal(expandTo9Decimals("1"));
-
-    // expect the value be lower than the transferred
     await contract
       .connect(address1)
       .transfer(address2.address, expandTo9Decimals("0.9"));
-    expect(
-      await contract.connect(address2).balanceOf(address2.address)
-    ).to.equal(expandTo9Decimals("0.81"));
 
-    // expect the burn address have the tokens
-    expect(
-      await contract.connect(address2).balanceOf(await contract._burnAddress())
-    ).to.equal(expandTo9Decimals("0.09"));
+    expect(await contract.balanceOf(address2.address)).to.equal(
+      expandTo9Decimals("0.9")
+    );
+  });
+
+  describe("Fees", function () {
+    beforeEach(async function () {
+      await contract
+        .connect(owner)
+        .transfer(address1.address, expandTo9Decimals("1"));
+    });
+
+    it("Should be able to transfer with BURN fee", async function () {
+      await contract.setEcoSystemFeePercent(0, 0);
+      await contract.setRewardFeePercent(0, 0);
+      await contract.setLiquidityFeePercent(0, 0);
+      await contract.setTaxFeePercent(0, 0);
+      await contract.setBurnFeePercent(0, 1000);
+
+      // expect the value be lower than the transferred
+      await contract
+        .connect(address1)
+        .transfer(address2.address, expandTo9Decimals("0.9"));
+      expect(
+        await contract.connect(address2).balanceOf(address2.address)
+      ).to.equal(expandTo9Decimals("0.81"));
+
+      // expect the burn address have the tokens
+      expect(
+        await contract
+          .connect(address2)
+          .balanceOf(await contract._burnAddress())
+      ).to.equal(expandTo9Decimals("0.09"));
+    });
+
+    it("Should charge ecosystem fee", async function () {
+      await contract.setRewardFeePercent(0, 0);
+      await contract.setLiquidityFeePercent(0, 0);
+      await contract.setTaxFeePercent(0, 0);
+      await contract.setBurnFeePercent(0, 0);
+      await contract.setEcoSystemFeePercent(0, 1000);
+
+      await contract.setEcoSystemFeeAddress(address3.address, address4.address);
+
+      await contract
+        .connect(address1)
+        .transfer(address2.address, expandTo9Decimals("0.9"));
+
+      expect(await contract.balanceOf(address4.address)).to.equal(
+        expandTo9Decimals("0.09")
+      );
+    });
+
+    it("Should charge reward fee", async function () {
+      await contract.setEcoSystemFeePercent(0, 0);
+      await contract.setLiquidityFeePercent(0, 0);
+      await contract.setTaxFeePercent(0, 0);
+      await contract.setBurnFeePercent(0, 0);
+      await contract.setRewardFeePercent(0, 1000);
+
+      await contract.setRewardFeeAddress(address3.address, address4.address);
+
+      await contract
+        .connect(address1)
+        .transfer(address2.address, expandTo9Decimals("0.9"));
+
+      expect(await contract.balanceOf(address4.address)).to.equal(
+        expandTo9Decimals("0.09")
+      );
+    });
   });
 
   // todo: implement deployment of dexes
