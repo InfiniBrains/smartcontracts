@@ -146,8 +146,10 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         //exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
+        _isExcludedFromFee[_burnAddress] = true;
         emit ExcludeFromFee(owner());
         emit ExcludeFromFee(address(this));
+        emit ExcludeFromFee(_burnAddress);
 
 //        // todo: check if this is really necessary
 //        _isExcludedFromReward[owner()] = true;
