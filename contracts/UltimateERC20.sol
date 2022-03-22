@@ -32,8 +32,8 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     struct FeeTier {
         uint256 ecoSystemFee;
         address ecoSystem;
-        uint256 rewardFee;
-        address reward;
+        uint256 stakingFee;
+        address staking;
         uint256 liquidityFee; // fee to add funds to the DEX
         uint256 taxFee; // todo: is this to be used on reflection?
         uint256 burnFee;
@@ -45,7 +45,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 rFee;
         uint256 tTransferAmount;
         uint256 tEcoSystem;
-        uint256 tReward;
+        uint256 tStaking;
         uint256 tLiquidity;
         uint256 tFee;
         uint256 tBurn;
@@ -54,7 +54,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     struct tFeeValues {
         uint256 tTransferAmount;
         uint256 tEcoSystem;
-        uint256 tReward;
+        uint256 tStaking;
         uint256 tLiquidity;
         uint256 tFee;
         uint256 tBurn;
@@ -162,8 +162,8 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
         // set fees
         // 50 is 0,5% 500 is 5%
-        _emptyFees = FeeTier({ecoSystemFee:0, rewardFee:0, liquidityFee:50, taxFee:50, burnFee:0, ecoSystem:address(this), reward:address(this)});
-        _defaultFees = FeeTier({ecoSystemFee:125, rewardFee:125, liquidityFee:250, taxFee:500, burnFee:0, ecoSystem:address(this), reward:address(this)});
+        _emptyFees = FeeTier({ecoSystemFee:0, stakingFee:0, liquidityFee:50, taxFee:50, burnFee:0, ecoSystem:address(this), staking:address(this)});
+        _defaultFees = FeeTier({ecoSystemFee:125, stakingFee:125, liquidityFee:250, taxFee:500, burnFee:0, ecoSystem:address(this), staking:address(this)});
         
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
@@ -311,7 +311,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     event IncludeInFee(address account);
 
     function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
-        uint256 _fees = _tier.ecoSystemFee.add(_tier.rewardFee).add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.burnFee);
+        uint256 _fees = _tier.ecoSystemFee.add(_tier.stakingFee).add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.burnFee);
         require(_fees <= _maxFee, "Fees exceeded max limitation");
 
         return _tier;
@@ -319,7 +319,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function checkFeesChanged(FeeTier memory _tier, uint256 _oldFee, uint256 _newFee) internal view {
         uint256 _fees = _tier.ecoSystemFee
-        .add(_tier.rewardFee)
+        .add(_tier.stakingFee)
         .add(_tier.liquidityFee)
         .add(_tier.taxFee)
         .add(_tier.burnFee)
@@ -345,21 +345,21 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     event SetEcoSystemFeePercent(uint256 _empty, uint256 _default);
 
-    function setRewardFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
-        if(_default != _defaultFees.rewardFee) {
-            checkFeesChanged(_defaultFees, _defaultFees.rewardFee, _default);
-            _defaultFees.rewardFee = _default;
+    function setStakingFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
+        if(_default != _defaultFees.stakingFee) {
+            checkFeesChanged(_defaultFees, _defaultFees.stakingFee, _default);
+            _defaultFees.stakingFee = _default;
         }
 
-        if(_empty != _emptyFees.rewardFee) {
-            checkFeesChanged(_emptyFees, _emptyFees.rewardFee, _empty);
-            _emptyFees.rewardFee = _empty;
+        if(_empty != _emptyFees.stakingFee) {
+            checkFeesChanged(_emptyFees, _emptyFees.stakingFee, _empty);
+            _emptyFees.stakingFee = _empty;
         }
 
-        emit SetRewardFeePercent(_empty, _default);
+        emit SetStakingFeePercent(_empty, _default);
     }
 
-    event SetRewardFeePercent(uint256 _empty, uint256 _default);
+    event SetStakingFeePercent(uint256 _empty, uint256 _default);
 
     function setLiquidityFeePercent(uint256 _empty, uint256 _default) external onlyOwner() {
         if(_default != _defaultFees.liquidityFee) {
@@ -427,23 +427,23 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     event SetEcoSystemFeeAddress(address _empty, address _default);
 
-    function setRewardFeeAddress(address _empty, address _default) external onlyOwner() {
-        if(_default != _defaultFees.reward) {
+    function setStakingFeeAddress(address _empty, address _default) external onlyOwner() {
+        if(_default != _defaultFees.staking) {
             require(_default != address(0), "Address Zero is not allowed");
-            includeInReward(_defaultFees.reward);
-            _defaultFees.reward = _default;
+            includeInReward(_defaultFees.staking);
+            _defaultFees.staking = _default;
             excludeFromReward(_default);
         }
-        if(_empty != _emptyFees.reward) {
+        if(_empty != _emptyFees.staking) {
             require(_empty != address(0), "Address Zero is not allowed");
-            includeInReward(_emptyFees.reward);
-            _emptyFees.reward = _empty;
+            includeInReward(_emptyFees.staking);
+            _emptyFees.staking = _empty;
             excludeFromReward(_empty);
         }
-        emit SetRewardFeeAddress(_empty, _default);
+        emit SetStakingFeeAddress(_empty, _default);
     }
 
-    event SetRewardFeeAddress(address _empty, address _default);
+    event SetStakingFeeAddress(address _empty, address _default);
 
     function updateRouter(address _uniswapV2Router) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
@@ -474,9 +474,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     function _getValues(uint256 tAmount, bool _getDefault) private view returns (FeeValues memory) {
         tFeeValues memory tValues = _getTValues(tAmount, _getDefault);
-        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEcoSystem).add(tValues.tReward).add(tValues.tBurn);
+        uint256 tTransferFee = tValues.tLiquidity.add(tValues.tEcoSystem).add(tValues.tStaking).add(tValues.tBurn);
         (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tValues.tFee, tTransferFee, _getRate());
-        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEcoSystem, tValues.tReward, tValues.tLiquidity, tValues.tFee, tValues.tBurn);
+        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tEcoSystem, tValues.tStaking, tValues.tLiquidity, tValues.tFee, tValues.tBurn);
     }
 
     function _getTValues(uint256 tAmount, bool _getDefault) private view returns (tFeeValues memory) {
@@ -484,12 +484,12 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         tFeeValues memory tValues = tFeeValues(
             0,
             calculateFee(tAmount, tier.ecoSystemFee),
-            calculateFee(tAmount, tier.rewardFee),
+            calculateFee(tAmount, tier.stakingFee),
             calculateFee(tAmount, tier.liquidityFee),
             calculateFee(tAmount, tier.taxFee),
             calculateFee(tAmount, tier.burnFee)
         );
-        tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tReward).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tBurn);
+        tValues.tTransferAmount = tAmount.sub(tValues.tEcoSystem).sub(tValues.tStaking).sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tBurn);
         return tValues;
     }
 
@@ -788,11 +788,11 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
         if(_isDefaultFee) {
             _takeFee(sender, values.tEcoSystem, _defaultFees.ecoSystem);
-            _takeFee(sender, values.tReward, _defaultFees.reward);
+            _takeFee(sender, values.tStaking, _defaultFees.staking);
         }
         else {
             _takeFee(sender, values.tEcoSystem, _emptyFees.ecoSystem);
-            _takeFee(sender, values.tReward, _emptyFees.reward);
+            _takeFee(sender, values.tStaking, _emptyFees.staking);
         }
         _takeBurn(sender, values.tBurn);
     }
