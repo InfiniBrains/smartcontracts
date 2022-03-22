@@ -44,7 +44,7 @@ describe.only("UltimateCoin", function () {
     ).to.equal(true);
   });
 
-  it("should be able to create a new pair", async function () {
+  it("Should be able to create a new pair", async function () {
     const tx = await contract.addNewPair(
       "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
     ); // BUSD address
@@ -71,7 +71,7 @@ describe.only("UltimateCoin", function () {
 
     await contract.setBurnFeePercent(0, 0);
     await contract.setEcoSystemFeePercent(0, 0);
-    await contract.setRewardFeePercent(0, 0);
+    await contract.setStakingFeePercent(0, 0);
     await contract.setLiquidityFeePercent(0, 0);
     await contract.setTaxFeePercent(0, 0);
 
@@ -87,16 +87,18 @@ describe.only("UltimateCoin", function () {
 
   describe("Fees", function () {
     beforeEach(async function () {
+      await contract.setEcoSystemFeePercent(0, 0);
+      await contract.setStakingFeePercent(0, 0);
+      await contract.setLiquidityFeePercent(0, 0);
+      await contract.setTaxFeePercent(0, 0);
+      await contract.setBurnFeePercent(0, 0);
+
       await contract
         .connect(owner)
         .transfer(address1.address, expandTo9Decimals("1"));
     });
 
     it("Should be able to transfer with BURN fee", async function () {
-      await contract.setEcoSystemFeePercent(0, 0);
-      await contract.setRewardFeePercent(0, 0);
-      await contract.setLiquidityFeePercent(0, 0);
-      await contract.setTaxFeePercent(0, 0);
       await contract.setBurnFeePercent(0, 1000);
 
       // expect the value be lower than the transferred
@@ -116,10 +118,6 @@ describe.only("UltimateCoin", function () {
     });
 
     it("Should charge ecosystem fee", async function () {
-      await contract.setRewardFeePercent(0, 0);
-      await contract.setLiquidityFeePercent(0, 0);
-      await contract.setTaxFeePercent(0, 0);
-      await contract.setBurnFeePercent(0, 0);
       await contract.setEcoSystemFeePercent(0, 1000);
 
       await contract.setEcoSystemFeeAddress(address3.address, address4.address);
@@ -133,14 +131,10 @@ describe.only("UltimateCoin", function () {
       );
     });
 
-    it("Should charge reward fee", async function () {
-      await contract.setEcoSystemFeePercent(0, 0);
-      await contract.setLiquidityFeePercent(0, 0);
-      await contract.setTaxFeePercent(0, 0);
-      await contract.setBurnFeePercent(0, 0);
-      await contract.setRewardFeePercent(0, 1000);
+    it("Should charge staking fee", async function () {
+      await contract.setStakingFeePercent(0, 1000);
 
-      await contract.setRewardFeeAddress(address3.address, address4.address);
+      await contract.setStakingFeeAddress(address3.address, address4.address);
 
       await contract
         .connect(address1)
