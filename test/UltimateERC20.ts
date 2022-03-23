@@ -5,7 +5,7 @@ import { UltimateERC20, UltimateERC20__factory } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, utils } from "ethers";
 import { expandTo9Decimals } from "./shared/utilities";
-import routerABI from "../abis/routerABI.json";
+import { abi } from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
 describe.only("UltimateCoin", function () {
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -151,7 +151,7 @@ describe.only("UltimateCoin", function () {
       let router: Contract;
 
       before(async function () {
-        router = new ethers.Contract(ROUTER_ADDRESS, routerABI, owner);
+        router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
       });
 
       beforeEach(async function () {
