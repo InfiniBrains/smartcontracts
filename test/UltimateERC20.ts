@@ -99,6 +99,16 @@ describe.only("UltimateCoin", function () {
         .transfer(address1.address, expandTo9Decimals("1"));
     });
 
+    it("Should calculate total fee correctly", async function () {
+      expect(await contract.totalFees()).to.equal(expandTo9Decimals("0"));
+      await contract.setTaxFeePercent(0, 1000);
+      await contract
+        .connect(address1)
+        .transfer(address2.address, expandTo9Decimals("1"));
+
+      expect(await contract.totalFees()).to.equal(expandTo9Decimals("0.1"));
+    });
+
     it("Should be able to transfer with BURN fee", async function () {
       await contract.setBurnFeePercent(0, 1000);
 
