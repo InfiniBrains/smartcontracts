@@ -72,6 +72,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     uint256 private constant MAX = type(uint256).max;
     uint256 private _tTotal;
     uint256 private _rTotal;
+    // @dev total reflect fee collected
     uint256 private _tFeeTotal;
     uint256 private _maxFee;
 
@@ -250,10 +251,12 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         return _isExcludedFromReward[account];
     }
 
+    // @dev total fees collected in tax to be used in reflection(i guess)
     function totalFees() public view returns (uint256) {
         return _tFeeTotal;
     }
 
+    // todo: is this even useful?
     function reflectionFromTokenInTiers(uint256 tAmount, bool _getDefaultFee, bool deductTransferFee) public view returns(uint256) {
         require(tAmount <= _tTotal, "Amount must be less than supply");
         if (!deductTransferFee) {
@@ -312,13 +315,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         emit IncludeInFee(account);
     }
     event IncludeInFee(address account);
-
-    function checkFees(FeeTier memory _tier) internal view returns (FeeTier memory) {
-        uint256 _fees = _tier.ecoSystemFee.add(_tier.stakingFee).add(_tier.liquidityFee).add(_tier.taxFee).add(_tier.burnFee);
-        require(_fees <= _maxFee, "Fees exceeded max limitation");
-
-        return _tier;
-    }
 
     function checkFeesChanged(FeeTier memory _tier, uint256 _oldFee, uint256 _newFee) internal view {
         uint256 _fees = _tier.ecoSystemFee
@@ -561,7 +557,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
     // todo: make it a modifier
     // todo: test this
-    function _checkIfDexIsAuthorized(address from, address to) private view {
+    modifier _checkIfPairIsAuthorized(address from, address to) {
         // if the contract has symbol and the name is Cake-LP, it is a pancake pair
         if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
             // todo: compare this with isrouter function
@@ -578,6 +574,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
             }
             catch {}
         }
+        _;
     }
 
     function setLockTime(uint timeBetweenTransactions) public onlyOwner {
@@ -594,13 +591,11 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 //    preventBlacklisted(from, "From address is blacklisted")
 //    preventBlacklisted(to, "To address is blacklisted")
     ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly // todo: fix this (giving error when try to add liquidity)
+    _checkIfPairIsAuthorized(from, to)
     {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-
-        // make it a modifier
-        _checkIfDexIsAuthorized(from, to);
 
         // todo: add costly fees if the amount is above the _maxTxAmount.
         // todo: The more amount is bigger than _maxTxAmount, the more tax increases (linear)
