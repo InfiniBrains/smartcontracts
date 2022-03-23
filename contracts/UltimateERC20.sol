@@ -84,6 +84,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     FeeTier private _emptyFees;
 
     IUniswapV2Router02 public uniswapV2Router;
+    address public uniswapFactoryAddress;
     mapping(address => bool) public automatedMarketMakerPairs;
     address public defaultPair;
 
@@ -113,10 +114,11 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     // @dev ensures the route is excluded form fees
     modifier ensureRouterIsExcluded(address _sender) {
         if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
-            // todo: test this!
-            IUniswapV2Router02 _routerCheck = IUniswapV2Router02(_sender);
-            try _routerCheck.factory() returns (address factory) { // todo: this test is too costly. improve this
-                excludeFromFee(_sender);
+            // todo: this test is too simple...
+            try IUniswapV2Router02(_sender).factory() returns (address factory) {
+                // pancakeswap router address
+                require(factory == uniswapFactoryAddress, "Wrong factory address");
+                _isExcludedFromFee[_sender] = true;
             } catch {}
         }
         _;
@@ -142,6 +144,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         _rOwned[_msgSender()] = _rTotal;
 
         uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
+        uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
 
         // Create a uniswap pair for this new token
         defaultPair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
@@ -590,7 +593,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 //    preventBlacklisted(_msgSender(), "Address is blacklisted")
 //    preventBlacklisted(from, "From address is blacklisted")
 //    preventBlacklisted(to, "To address is blacklisted")
-    // ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly // todo: fix this (giving error when try to add liquidity)
+    ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly // todo: fix this (giving error when try to add liquidity)
     {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
