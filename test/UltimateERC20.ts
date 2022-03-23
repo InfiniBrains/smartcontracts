@@ -1,10 +1,11 @@
 /* eslint-disable camelcase */
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network, waffle } from "hardhat";
 import { UltimateERC20, UltimateERC20__factory } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { utils } from "ethers";
+import { Contract, utils } from "ethers";
 import { expandTo9Decimals } from "./shared/utilities";
+import routerABI from "../abis/routerABI.json";
 
 describe.only("UltimateCoin", function () {
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -143,6 +144,82 @@ describe.only("UltimateCoin", function () {
       expect(await contract.balanceOf(address4.address)).to.equal(
         expandTo9Decimals("0.09")
       );
+    });
+
+    describe("Liquidity fee", function () {
+      const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+      let router: Contract;
+
+      before(async function () {
+        router = new ethers.Contract(ROUTER_ADDRESS, routerABI, owner);
+      });
+
+      beforeEach(async function () {
+        const TokenAmount = expandTo9Decimals("100000");
+
+        const BNBAmount = expandTo9Decimals("1000");
+
+        await contract.approve(ROUTER_ADDRESS, ethers.constants.MaxUint256);
+
+        // add liquidity to liquidity pool
+        await router
+          .connect(owner)
+          .addLiquidityETH(
+            contract.address,
+            TokenAmount,
+            0,
+            0,
+            owner.address,
+            ethers.constants.MaxUint256,
+            { value: BNBAmount }
+          );
+
+        await contract.setLiquidityFeePercent(0, 1000);
+
+        await contract.transfer(address1.address, expandTo9Decimals("510"));
+      });
+
+      it("Should add liquidity to LP", async function () {
+        expect(await contract.balanceOf(contract.address)).to.equal(0);
+
+        await contract
+          .connect(address1)
+          .transfer(address2.address, expandTo9Decimals("500"));
+
+        expect(await contract.balanceOf(contract.address)).to.equal(
+          expandTo9Decimals("50")
+        );
+
+        await contract
+          .connect(address2)
+          .transfer(address3.address, expandTo9Decimals("100"));
+
+        expect(
+          (await contract.balanceOf(contract.address)).toNumber()
+        ).to.be.within(10 * 10 ** 9, 10.5 * 10 ** 9);
+
+        expect(
+          (await contract.balanceOf(await contract.defaultPair())).toNumber()
+        ).to.be.within(100049.5 * 10 ** 9, 100050.5 * 10 ** 9);
+      });
+
+      it("Should not add liquidity to LP if contract balance is less than minimum amount to add to liquidity", async function () {
+        await contract
+          .connect(address1)
+          .transfer(address2.address, expandTo9Decimals("200"));
+
+        await contract
+          .connect(address2)
+          .transfer(address3.address, expandTo9Decimals("100"));
+
+        expect(await contract.balanceOf(contract.address)).to.equal(
+          expandTo9Decimals("30")
+        );
+
+        expect(await contract.balanceOf(await contract.defaultPair())).to.equal(
+          expandTo9Decimals("100000")
+        ); // liquidity is the same as initial
+      });
     });
   });
 
