@@ -126,9 +126,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
 
     // @dev the constructor
-    constructor (string memory name, string memory symbol) {
-        _name = name;
-        _symbol = symbol;
+    constructor (string memory __name, string memory __symbol) {
+        _name = __name;
+        _symbol = __symbol;
         _decimals = 9;
 
         _tTotal = 1000000000 * 10**_decimals;
