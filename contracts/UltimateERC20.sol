@@ -135,7 +135,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         _rTotal = (MAX - (MAX % _tTotal));
         _maxFee = 1000; // 10%
 
-        swapAndLiquifyEnabled = true;
+        swapAndLiquifyEnabled = false;
 
         _maxTxAmount = 5000 * 10**_decimals;
         numTokensSellToAddToLiquidity = 50 * 10**_decimals;
@@ -450,17 +450,14 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
     event UpdateRouter(address _uniswapV2Router);
 
-    function setDefaultSettings() external onlyOwner() {
+    // @dev enable the swap mechanisms. This can only be enabled. The owner cannot disable swap or lock the contract by any means.
+    function enableSwapAndLiquify() external onlyOwner() {
         swapAndLiquifyEnabled = true;
+        emit SwapAndLiquifyEnabledUpdated(true);
     }
 
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
         _maxTxAmount = _tTotal.mul(maxTxPercent).div(10**4);
-    }
-
-    function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner() {
-        swapAndLiquifyEnabled = _enabled;
-        emit SwapAndLiquifyEnabledUpdated(_enabled);
     }
 
     //to receive BNB from uniswapV2Router when swapping

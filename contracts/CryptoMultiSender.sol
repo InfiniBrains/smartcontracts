@@ -34,7 +34,6 @@ contract CryptoMultisender is Ownable {
     event EthAirdrop(address indexed by, uint256 totalTransfers, uint256 ethValue);
 
 
-
     event RateChanged(uint256 from, uint256 to);
     event RefundIssued(address indexed to, uint256 totalWei);
     event ERC20TokensWithdrawn(address token, address sentTo, uint256 value);
