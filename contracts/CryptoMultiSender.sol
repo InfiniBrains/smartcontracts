@@ -44,7 +44,7 @@ contract CryptoMultisender is Ownable {
     event PremiumMemberFeeUpdated(uint256 newFee);
 
 
-    constructor() public {
+    constructor() {
         rate = 10000;
         dropUnitPrice = 1e14;
         premiumMemberFee = 25e16;
