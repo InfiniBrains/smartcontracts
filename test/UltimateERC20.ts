@@ -30,7 +30,7 @@ describe.only("UltimateCoin", function () {
     contract = await contract.deployed();
   });
 
-  it("Should be contructed properly", async function () {
+  it("Should be constructed properly", async function () {
     expect(await contract.name()).to.equal("Test");
     expect(await contract.symbol()).to.equal("TST");
     expect(await contract.totalSupply()).to.equal(
@@ -43,6 +43,17 @@ describe.only("UltimateCoin", function () {
     expect(
       await contract.isExcludedFromReward(await contract._burnAddress())
     ).to.equal(true);
+
+    expect(await contract.isExcludedFromFee(await contract.owner())).to.equal(
+      true
+    );
+
+    // await expect(
+    //   await contract.setAutomatedMarketMakerPair(
+    //     await contract.defaultPair(),
+    //     true
+    //   )
+    // ).to.be.revertedWith("cannot be removed"); // should fail
   });
 
   it("Should be able to create a new pair", async function () {
@@ -190,6 +201,7 @@ describe.only("UltimateCoin", function () {
       });
 
       it("Should add liquidity to LP", async function () {
+        await contract.enableSwapAndLiquify();
         expect(await contract.balanceOf(contract.address)).to.equal(0);
 
         await contract

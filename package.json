@@ -45,6 +45,7 @@
     "coverage": "hardhat coverage",
     "start:coverage:server": "cd coverage & python -m http.server",
     "coverage:full": "npm run clean && hardhat compile --show-stack-traces && hardhat coverage --show-stack-traces && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
+    "coverage:partial": " hardhat compile --show-stack-traces && hardhat coverage --show-stack-traces && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
     "compile": "hardhat compile",
     "fork": "hardhat node",
     "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",
