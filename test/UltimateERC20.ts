@@ -242,6 +242,64 @@ describe.only("UltimateCoin", function () {
           expandTo9Decimals("100000")
         ); // liquidity is the same as initial
       });
+
+      it("Should not add liquidity to LP if swapAndLiquify is not enabled", async function () {
+        await contract.setSwapAndLiquifyEnabled(false);
+
+        await contract
+          .connect(address1)
+          .transfer(address2.address, expandTo9Decimals("500"));
+
+        expect(await contract.balanceOf(contract.address)).to.equal(
+          expandTo9Decimals("50")
+        );
+
+        await contract
+          .connect(address2)
+          .transfer(address3.address, expandTo9Decimals("100"));
+
+        expect(await contract.balanceOf(contract.address)).to.equal(
+          expandTo9Decimals("60")
+        );
+
+        expect(await contract.balanceOf(await contract.defaultPair())).to.equal(
+          expandTo9Decimals("100000")
+        ); // liquidity is the same as initial
+      });
+    });
+
+    describe("Reflect fee", async function () {
+      beforeEach(async function () {
+        await contract.setTaxFeePercent(0, 1000);
+
+        await contract
+          .connect(owner)
+          .transfer(address1.address, expandTo9Decimals("500"));
+      });
+
+      it.only("Should charge reflect fee", async function () {
+        expect(await contract.balanceOf(owner.address)).to.equal(
+          expandTo9Decimals("999999499")
+        ); // should not charge on owner transfer
+
+        expect(await contract.balanceOf(address1.address)).to.equal(
+          expandTo9Decimals("501")
+        ); // should not charge on owner transfer
+
+        await contract
+          .connect(address1)
+          .transfer(address2.address, expandTo9Decimals("500"));
+
+        expect(await contract.balanceOf(owner.address)).to.equal(
+          expandTo9Decimals("999999548.999977449")
+        );
+
+        expect(await contract.balanceOf(address1.address)).to.equal(1000000050);
+
+        expect(await contract.balanceOf(address2.address)).to.equal(
+          450000022500
+        );
+      });
     });
   });
 
