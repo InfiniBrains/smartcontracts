@@ -244,7 +244,7 @@ describe.only("UltimateCoin", function () {
       });
 
       it("Should not add liquidity to LP if swapAndLiquify is not enabled", async function () {
-        await contract.setSwapAndLiquifyEnabled(false);
+        await contract.enableSwapAndLiquify();
 
         await contract
           .connect(address1)
