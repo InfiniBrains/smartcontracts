@@ -33,7 +33,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         uint256 ecoSystemFee;
         address ecoSystem;
         uint256 stakingFee;
-        address staking;
+        address staking; // wallet para dividendos para detentores de HRS
         uint256 liquidityFee; // fee to add funds to the DEX
         uint256 taxFee; // todo: is this to be used on reflection?
         uint256 burnFee;
