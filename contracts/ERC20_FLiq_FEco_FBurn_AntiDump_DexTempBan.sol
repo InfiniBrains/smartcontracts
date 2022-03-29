@@ -19,7 +19,7 @@ import "./TimeLockDexTransactions.sol";
 * Fees totais limitados a 10% [done: Ailton]
 * Upgradeable para próximo token
 * Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-* Time lock dex transactions
+* Time lock dex transactions [done: Ailton]
 * Receber fees em BNB ou BUSD (não obrigatório)
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
@@ -205,6 +205,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
+            if(automatedMarketMakerPairs[to]) {
+                require(canOperate(from), "the sender cannot operate yet");
+                lockToOperate(from);
+            } else {
+                require(canOperate(to), "the recipient cannot sell yet");
+                lockToOperate(to);
+            }
+
             if (ecoSystemFee > 0) {
                 uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100);
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
