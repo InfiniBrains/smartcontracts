@@ -12,8 +12,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
-* Transações tiram fees
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
+* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) - DONE - TOLSTA
 * Fee de ecossistema da empresa(configurável pela empresa)
 * Fee de burn. (configurável pela empresa até certo limite)
 * Fees totais limitados a 10%
@@ -264,7 +263,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             tokenAmount,
             0,
             0,
-            lpRecipient,
+            liquidityAddress==DEAD_ADDRESS?_msgSender():liquidityAddress,
             block.timestamp.add(300)
         );
     }
