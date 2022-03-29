@@ -6,50 +6,31 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "./TimeLockDexTransactions.sol";
 
-/**
-* Transações tiram fees
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
-* Fee de ecossistema da empresa(configurável pela empresa)
-* Fee de burn. (configurável pela empresa até certo limite)
-* Fees totais limitados a 10%
-* Upgradeable para próximo token
-* Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-* Time lock dex transactions
-* Receber fees em BNB ou BUSD (não obrigatório)
-*/
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
+contract SkyzaoV2 is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
+    using Address for address;
 
-    // @dev dead address
-    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
-
-    // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
-    uint256 ecoSystemFee;
-
-    // @dev which wallet will receive the ecosystem fee
-    address ecoSystemAddress;
-
-    // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 liquidityFee;
-
-    // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
     address liquidityAddress;
-
-    // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 burnFee;
-
-    // @dev the defauld dex router
-    IUniswapV2Router02 public dexRouter;
-
-    address public lpRecipient;
-
+    address ecoSystemAddress;
     address public teamWallet;
     address public lotteryWallet;
+    address public lpRecipient;
+    address public dexPair;
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+    
+    uint256 ecoSystemFee; 
+    uint256 liquidityFee;
+    uint256 burnFee;
+    uint256 private _maxFee;
+
+    IUniswapV2Router02 public dexRouter;
 
     uint256 public liquidityBuyFee = 0;
     uint256 public liquiditySellFee = 0;
@@ -57,30 +38,32 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public burnSellFee = 0;
     uint256 public teamBuyFee = 0;
     uint256 public teamSellFee = 0;
-    uint256 public lotteryBuyFee = 0;
-    uint256 public lotterySellFee = 0;
+
+    uint256 private constant MAX = type(uint256).max;
 
     uint256 public totalBuyFee = 0;
     uint256 public totalSellFee = 0;
 
-    uint256 public constant TOTAL_SUPPLY = 1000000000 * (10**decimals);
+    uint256 private constant TOTAL_SUPPLY = 1000000000 * 10**decimals();
+
 
     mapping(address => bool) public isExcludedFromFees;
-
-    address public dexPair;
     mapping(address => bool) public automatedMarketMakerPairs;
     mapping(address => bool) public isBlacklisted;
 
-    constructor() ERC20("MafaCoin", "MAFA") {
+    constructor() ERC20("SkyZao", "SKZ") {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
 
+        _maxFee = 1000;
+
         _mint(owner(), TOTAL_SUPPLY);
     }
-
+    
+    // Owner's Fee Configuration
     function afterPreSale() external onlyOwner {
         setLiquidyBuyFee(3);
         setLiquidySellFee(3);
@@ -88,18 +71,19 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         setBurnSellFee(1);
         setTeamBuyFee(1);
         setTeamSellFee(5);
-        setLotterySellFee(1);
         setLpRecipient(owner());
 
-        tradingIsEnabled = true;
+        bool tradingIsEnabled = true;
     }
-
+    
+    // Requires that the Dex address is different from the end of the pair
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
         require(pair != dexPair, "cannot be removed");
 
         _setAutomatedMarketMakerPair(pair, value);
     }
-
+    
+    // Function to issue the pair event
     function _setAutomatedMarketMakerPair(address pair, bool value) private onlyOwner {
         automatedMarketMakerPairs[pair] = value;
 
@@ -108,6 +92,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     receive() external payable {}
 
+    // Requires that the account be fee-free
     function excludeFromFees(address account, bool excluded) public onlyOwner {
         require(isExcludedFromFees[account] != excluded, "Already excluded");
         isExcludedFromFees[account] = excluded;
@@ -115,6 +100,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit ExcludeFromFees(account, excluded);
     }
 
+    // Sets Blacklist Account who cannot transact
     function blacklistAccount(address account, bool blacklisted) external onlyOwner {
         require(isBlacklisted[account] != blacklisted, "Already blacklisted");
         isBlacklisted[account] = blacklisted;
@@ -122,6 +108,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit AccountBlacklisted(account, blacklisted);
     }
 
+    // Sets Liquidity Pool Recipient
     function setLpRecipient(address recipient) public onlyOwner {
         require(lpRecipient != recipient, "LP recipient already setted");
         lpRecipient = recipient;
@@ -129,6 +116,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit LpRecipientUpdated(recipient);
     }
 
+    // Sets Team Wallet
     function setTeamWallet(address _newWallet) external onlyOwner {
         require(_newWallet != address(0), "zero address is not allowed");
 
@@ -138,14 +126,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit TeamWalletUpdated(_newWallet);
     }
 
-    function setLotteryWallet(address _newWallet) external onlyOwner {
-        require(_newWallet != address(0), "zero address is not allowed");
-        excludeFromFees(_newWallet, true);
-        lotteryWallet = _newWallet;
 
-        emit LotteryWalletUpdated(_newWallet);
-    }
-
+    // Sets Liquidy Buy Fee
     function setLiquidyBuyFee(uint256 newFee) public onlyOwner {
         liquidityBuyFee = newFee;
         _updateTotalBuyFee();
@@ -153,13 +135,15 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit FeeUpdated(newFee, "liquidityBuyFee");
     }
 
+    // Sets Liquidy Sell Fee
     function setLiquidySellFee(uint256 newFee) public onlyOwner {
         liquiditySellFee = newFee;
         _updateTotalSellFee();
 
         emit FeeUpdated(newFee, "liquiditySellFee");
     }
-
+    
+    // Sets burn buy fee
     function setBurnBuyFee(uint256 newFee) public onlyOwner {
         burnBuyFee = newFee;
         _updateTotalBuyFee();
@@ -167,6 +151,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit FeeUpdated(newFee, "burnBuyFee");
     }
 
+    // Sets burn sell fee
     function setBurnSellFee(uint256 newFee) public onlyOwner {
         burnSellFee = newFee;
         _updateTotalSellFee();
@@ -174,6 +159,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit FeeUpdated(newFee, "burnSellFee");
     }
 
+    // Sets the team fee on purchase
     function setTeamBuyFee(uint256 newFee) public onlyOwner {
         teamBuyFee = newFee;
         _updateTotalBuyFee();
@@ -181,6 +167,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit FeeUpdated(newFee, "teamBuyFee");
     }
 
+    // Sets the team fee on the sale
     function setTeamSellFee(uint256 newFee) public onlyOwner {
         teamSellFee = newFee;
         _updateTotalSellFee();
@@ -188,28 +175,23 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit FeeUpdated(newFee, "teamSellFee");
     }
 
-    function setLotteryBuyFee(uint256 newFee) external onlyOwner {
-        lotteryBuyFee = newFee;
-        _updateTotalBuyFee();
 
-        emit FeeUpdated(newFee, "lotteryBuyFee");
-    }
-
-    function setLotterySellFee(uint256 newFee) public onlyOwner {
-        lotterySellFee = newFee;
-        _updateTotalSellFee();
-
-        emit FeeUpdated(newFee, "lotterySellFee");
-    }
-
+    // Sums the total of the purchase fees
     function _updateTotalBuyFee() internal {
-        totalBuyFee = liquidityBuyFee.add(burnBuyFee).add(teamBuyFee).add(lotteryBuyFee);
+        totalBuyFee = liquidityBuyFee.add(burnBuyFee).add(teamBuyFee);
+
+        require(totalBuyFee <= _maxFee, "Fees exceeded max limitation");
+
     }
 
+    // Sums the total sales charges
     function _updateTotalSellFee() internal {
-        totalSellFee = liquiditySellFee.add(burnSellFee).add(teamSellFee).add(lotterySellFee);
+        totalSellFee = liquiditySellFee.add(burnSellFee).add(teamSellFee);
+
+        require(totalSellFee <= _maxFee, "Fees exceeded max limitation");
     }
 
+    // Set address of pair for settlement in dex
     function startLiquidity(address router) external onlyOwner {
         require(router != address(0), "zero address is not allowed");
 
@@ -225,6 +207,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit LiquidityStarted(router, _dexPair);
     }
 
+    // Set the swap value of the contract
     function _swapAndLiquify(uint256 amount) private {
         uint256 half = amount.div(2);
         uint256 otherHalf = amount.sub(half);
@@ -240,6 +223,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit SwapAndLiquify(half, newAmount, otherHalf);
     }
 
+    // Receives the fees in BNB and gives a time lock to those who made the transaction
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
@@ -256,6 +240,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
     }
 
+    // Adds liquidity in the pool between the token and BNB
     function _addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
         _approve(address(this), address(dexRouter), tokenAmount);
 
@@ -269,11 +254,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
     }
 
+    // Transfer function
     function _transfer(
         address from,
         address to,
         uint256 amount
     ) internal override {
+        bool tradingIsEnabled = true;
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
@@ -310,11 +297,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                     super._transfer(from, DEAD_ADDRESS, tokensToBurn);
                 }
 
-                if (lotterySellFee > 0) {
-                    uint256 tokensToReward = amount.mul(lotterySellFee).div(100);
-                    super._transfer(from, lotteryWallet, tokensToReward);
-                }
-
                 if (teamSellFee > 0) {
                     uint256 tokensToTeam = amount.mul(teamSellFee).div(100);
                     super._transfer(from, teamWallet, tokensToTeam);
@@ -335,11 +317,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                     }
                     uint256 tokensToBurn = amount.mul(burnBuyFee).div(100);
                     super._transfer(from, DEAD_ADDRESS, tokensToBurn);
-                }
-
-                if (lotteryBuyFee > 0) {
-                    uint256 tokensToReward = amount.mul(lotteryBuyFee).div(100);
-                    super._transfer(from, lotteryWallet, tokensToReward);
                 }
 
                 if (teamBuyFee > 0) {
