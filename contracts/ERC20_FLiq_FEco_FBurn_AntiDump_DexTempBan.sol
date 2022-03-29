@@ -8,17 +8,18 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) - DONE - TOLSTA
-* Fee de ecossistema da empresa(configurável pela empresa)
-* Fee de burn. (configurável pela empresa até certo limite)
-* Fees totais limitados a 10%
+* Transações tiram fees
+* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) [done: Ailton, Tolsta]
+* Fee de ecossistema da empresa(configurável pela empresa) [done: Ailton]
+* Fee de burn. (configurável pela empresa até certo limite) [done: Ailton]
+* Fees totais limitados a 10% [done: Ailton]
 * Upgradeable para próximo token
 * Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-* Time lock dex transactions
+* Time lock dex transactions [done: Ailton]
 * Receber fees em BNB ou BUSD (não obrigatório)
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
@@ -28,41 +29,26 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
-    uint256 ecoSystemFee;
+    uint256 public ecoSystemFee;
 
     // @dev which wallet will receive the ecosystem fee
-    address ecoSystemAddress;
+    address public ecoSystemAddress;
 
     // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 liquidityFee;
+    uint256 public liquidityFee;
 
     // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
-    address liquidityAddress;
+    address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 burnFee;
+    uint256 public burnFee;
+
+    uint256 public burnFeeLimit;
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
 
-    address public lpRecipient;
-
-    address public teamWallet;
-    address public lotteryWallet;
-
-    uint256 public liquidityBuyFee = 0;
-    uint256 public liquiditySellFee = 0;
-    uint256 public burnBuyFee = 0;
-    uint256 public burnSellFee = 0;
-    uint256 public teamBuyFee = 0;
-    uint256 public teamSellFee = 0;
-    uint256 public lotteryBuyFee = 0;
-    uint256 public lotterySellFee = 0;
-
-    uint256 public totalBuyFee = 0;
-    uint256 public totalSellFee = 0;
-
-    uint256 public constant TOTAL_SUPPLY = 1000000000 * (10**decimals);
+    uint256 public immutable TOTAL_SUPPLY;
 
     mapping(address => bool) public isExcludedFromFees;
 
@@ -77,20 +63,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
 
+        TOTAL_SUPPLY = 1000000000 * (10** decimals());
+
         _mint(owner(), TOTAL_SUPPLY);
-    }
-
-    function afterPreSale() external onlyOwner {
-        setLiquidyBuyFee(3);
-        setLiquidySellFee(3);
-        setBurnBuyFee(1);
-        setBurnSellFee(1);
-        setTeamBuyFee(1);
-        setTeamSellFee(5);
-        setLotterySellFee(1);
-        setLpRecipient(owner());
-
-        tradingIsEnabled = true;
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
@@ -114,99 +89,47 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit ExcludeFromFees(account, excluded);
     }
 
-    function blacklistAccount(address account, bool blacklisted) external onlyOwner {
-        require(isBlacklisted[account] != blacklisted, "Already blacklisted");
-        isBlacklisted[account] = blacklisted;
+    function setEcoSystemAddress(address newAddress) public onlyOwner {
+        require(ecoSystemAddress != newAddress, "EcoSystem address already setted");
+        ecoSystemAddress = newAddress;
 
-        emit AccountBlacklisted(account, blacklisted);
+        emit EcoSystemAddressUpdated(newAddress);
     }
 
-    function setLpRecipient(address recipient) public onlyOwner {
-        require(lpRecipient != recipient, "LP recipient already setted");
-        lpRecipient = recipient;
+    function setEcosystemFee(uint256 newFee) public onlyOwner {
+        require(newFee.add(liquidityFee).add(burnFee) <= 10, "Fees too high");
+        ecoSystemFee = newFee;
 
-        emit LpRecipientUpdated(recipient);
+        emit EcosystemFeeUpdated(newFee);
     }
 
-    function setTeamWallet(address _newWallet) external onlyOwner {
-        require(_newWallet != address(0), "zero address is not allowed");
+    function setLiquidityAddress(address newAddress) public onlyOwner {
+        require(liquidityAddress != newAddress, "Liquidity address already setted");
+        liquidityAddress = newAddress;
 
-        excludeFromFees(_newWallet, true);
-        teamWallet = _newWallet;
-
-        emit TeamWalletUpdated(_newWallet);
+        emit LiquidityAddressUpdated(newAddress);
     }
 
-    function setLotteryWallet(address _newWallet) external onlyOwner {
-        require(_newWallet != address(0), "zero address is not allowed");
-        excludeFromFees(_newWallet, true);
-        lotteryWallet = _newWallet;
+    function setLiquidityFee(uint256 newFee) public onlyOwner {
+        require(newFee.add(ecoSystemFee).add(burnFee) <= 10, "Fees too high");
+        liquidityFee = newFee;
 
-        emit LotteryWalletUpdated(_newWallet);
+        emit LiquidityFeeUpdated(newFee);
     }
 
-    function setLiquidyBuyFee(uint256 newFee) public onlyOwner {
-        liquidityBuyFee = newFee;
-        _updateTotalBuyFee();
+    function setBurnFee(uint256 newFee) public onlyOwner {
+        require(newFee.add(ecoSystemFee).add(liquidityFee) <= 10, "Fees too high");
+        require(newFee <= burnFeeLimit, "New fee higher than burn fee limit");
+        burnFee = newFee;
 
-        emit FeeUpdated(newFee, "liquidityBuyFee");
+        emit BurnFeeUpdated(newFee);
     }
 
-    function setLiquidySellFee(uint256 newFee) public onlyOwner {
-        liquiditySellFee = newFee;
-        _updateTotalSellFee();
+    function setBurnFeeLimit(uint256 newLimit) public onlyOwner {
+        require(newLimit <= 10, "Limit too high");
+        burnFeeLimit = newLimit;
 
-        emit FeeUpdated(newFee, "liquiditySellFee");
-    }
-
-    function setBurnBuyFee(uint256 newFee) public onlyOwner {
-        burnBuyFee = newFee;
-        _updateTotalBuyFee();
-
-        emit FeeUpdated(newFee, "burnBuyFee");
-    }
-
-    function setBurnSellFee(uint256 newFee) public onlyOwner {
-        burnSellFee = newFee;
-        _updateTotalSellFee();
-
-        emit FeeUpdated(newFee, "burnSellFee");
-    }
-
-    function setTeamBuyFee(uint256 newFee) public onlyOwner {
-        teamBuyFee = newFee;
-        _updateTotalBuyFee();
-
-        emit FeeUpdated(newFee, "teamBuyFee");
-    }
-
-    function setTeamSellFee(uint256 newFee) public onlyOwner {
-        teamSellFee = newFee;
-        _updateTotalSellFee();
-
-        emit FeeUpdated(newFee, "teamSellFee");
-    }
-
-    function setLotteryBuyFee(uint256 newFee) external onlyOwner {
-        lotteryBuyFee = newFee;
-        _updateTotalBuyFee();
-
-        emit FeeUpdated(newFee, "lotteryBuyFee");
-    }
-
-    function setLotterySellFee(uint256 newFee) public onlyOwner {
-        lotterySellFee = newFee;
-        _updateTotalSellFee();
-
-        emit FeeUpdated(newFee, "lotterySellFee");
-    }
-
-    function _updateTotalBuyFee() internal {
-        totalBuyFee = liquidityBuyFee.add(burnBuyFee).add(teamBuyFee).add(lotteryBuyFee);
-    }
-
-    function _updateTotalSellFee() internal {
-        totalSellFee = liquiditySellFee.add(burnSellFee).add(teamSellFee).add(lotterySellFee);
+        emit BurnFeeLimitUpdated(newLimit);
     }
 
     function startLiquidity(address router) external onlyOwner {
@@ -263,7 +186,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             tokenAmount,
             0,
             0,
-            liquidityAddress==DEAD_ADDRESS?_msgSender():liquidityAddress,
+            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
             block.timestamp.add(300)
         );
     }
@@ -276,99 +199,48 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-        require(!isBlacklisted[from], "Address is blacklisted");
-        require(tradingIsEnabled || (isExcludedFromFees[from] || isExcludedFromFees[to]), "Trading not started");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
 
         if (excludedAccount) {
-            uint256 burnedTokens = balanceOf(DEAD_ADDRESS);
-            if (burnedTokens >= TOTAL_SUPPLY.div(2)) {
-                setBurnBuyFee(0);
-                setBurnSellFee(0);
-                emit BurnFeeStopped(burnedTokens, burnBuyFee, burnSellFee);
-            }
-
             super._transfer(from, to, amount);
         } else {
-            if (automatedMarketMakerPairs[to]) {
-                if (liquiditySellFee > 0) {
-                    uint256 tokensToLiquidity = amount.mul(liquiditySellFee).div(100);
-                    super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity);
-                }
-
-                if (burnSellFee > 0) {
-                    uint256 burnedTokens = balanceOf(DEAD_ADDRESS);
-                    if (burnedTokens >= TOTAL_SUPPLY.div(2)) {
-                        setBurnBuyFee(0);
-                        setBurnSellFee(0);
-                        emit BurnFeeStopped(burnedTokens, burnBuyFee, burnSellFee);
-                    }
-                    uint256 tokensToBurn = amount.mul(burnSellFee).div(100);
-                    super._transfer(from, DEAD_ADDRESS, tokensToBurn);
-                }
-
-                if (lotterySellFee > 0) {
-                    uint256 tokensToReward = amount.mul(lotterySellFee).div(100);
-                    super._transfer(from, lotteryWallet, tokensToReward);
-                }
-
-                if (teamSellFee > 0) {
-                    uint256 tokensToTeam = amount.mul(teamSellFee).div(100);
-                    super._transfer(from, teamWallet, tokensToTeam);
-                }
+            if(automatedMarketMakerPairs[to]) {
+                require(canOperate(from), "the sender cannot operate yet");
+                lockToOperate(from);
             } else {
-                if (liquidityBuyFee > 0) {
-                    uint256 tokensToLiquidity = amount.mul(liquidityBuyFee).div(100);
-                    super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity);
-                }
-
-                if (burnBuyFee > 0) {
-                    uint256 burnedTokens = balanceOf(DEAD_ADDRESS);
-                    if (burnedTokens >= TOTAL_SUPPLY.div(2)) {
-                        setBurnBuyFee(0);
-                        setBurnSellFee(0);
-                        emit BurnFeeStopped(burnedTokens, burnBuyFee, burnSellFee);
-                    }
-                    uint256 tokensToBurn = amount.mul(burnBuyFee).div(100);
-                    super._transfer(from, DEAD_ADDRESS, tokensToBurn);
-                }
-
-                if (lotteryBuyFee > 0) {
-                    uint256 tokensToReward = amount.mul(lotteryBuyFee).div(100);
-                    super._transfer(from, lotteryWallet, tokensToReward);
-                }
-
-                if (teamBuyFee > 0) {
-                    uint256 tokensToTeam = amount.mul(teamBuyFee).div(100);
-                    super._transfer(from, teamWallet, tokensToTeam);
-                }
+                require(canOperate(to), "the recipient cannot sell yet");
+                lockToOperate(to);
             }
 
-            uint256 amountMinusFees;
-            if (automatedMarketMakerPairs[to]) {
-                amountMinusFees = amount.sub(amount.mul(totalSellFee).div(100));
-            } else {
-                amountMinusFees = amount.sub(amount.mul(totalBuyFee).div(100));
+            if (ecoSystemFee > 0) {
+                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100);
+                super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
+
+            if (liquidityFee > 0) {
+                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100);
+                super._transfer(from, address(this), tokensToLiquidity);
+                _swapAndLiquify(tokensToLiquidity);
+            }
+
+            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee);
             super._transfer(from, to, amountMinusFees);
         }
     }
 
     event ExcludeFromFees(address indexed account, bool isExcluded);
-    event AccountBlacklisted(address indexed account, bool isBlacklisted);
-    event LpRecipientUpdated(address indexed lpRecipient);
+    event LiquidityAddressUpdated(address indexed liquidityAddress);
+    event EcoSystemAddressUpdated(address indexed ecoSystemAddress);
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
     event SwapAndLiquify(
         uint256 indexed tokensSwapped,
         uint256 indexed bnbReceived,
         uint256 indexed tokensIntoLiqudity
     );
-    event BurnFeeStopped(uint256 indexed burnedTokens, uint256 indexed burnBuyFee, uint256 indexed burnSellFee);
-    event TeamWalletUpdated(address indexed newWallet);
-    event LotteryWalletUpdated(address indexed newWallet);
-    event FeeUpdated(uint256 indexed fee, bytes32 indexed feeType);
+    event EcosystemFeeUpdated(uint256 indexed fee);
+    event LiquidityFeeUpdated(uint256 indexed fee);
+    event BurnFeeUpdated(uint256 indexed fee);
+    event BurnFeeLimitUpdated(uint256 indexed limit);
     event LiquidityStarted(address indexed routerAddress, address indexed pairAddress);
 }
