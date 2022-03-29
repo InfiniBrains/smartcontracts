@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -17,7 +18,7 @@ import "./TimeLockDexTransactions.sol";
 * Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) [done: Ailton, Tolsta]
 * Fee de ecossistema da empresa(configurável pela empresa) [done: Ailton]
 * Fee de burn. (configurável pela empresa até certo limite) [done: Ailton]
-* Fees totais limitados a 10% [done: Ailton]
+* Fees totais limitados a 10% [done: Tolsta]
 * Upgradeable para próximo token
 * Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
 * Time lock dex transactions [done: Ailton]
@@ -25,6 +26,7 @@ import "./TimeLockDexTransactions.sol";
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
+    using Address for address;
 
     // @dev dead address
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
@@ -50,22 +52,43 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
 
+    // @dev the dex factory address
+    address public uniswapFactoryAddress;
+
+    // @dev just to simplify to the user, the total fees
+    uint256 public totalFees = 0;
+
+    // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
 
-    // @dev default pair
+    // @dev the default dex pair
     address public dexPair;
 
-    // @dev all other allowed pairs
+    // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
 
-    constructor() ERC20("MafaCoin", "MAFA") {
+    constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
 
-        _mint(owner(), 1000000000 * (10** decimals()));
+        _mint(owner(), totalSupply);
+
+        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
+        uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
+
+        // Create a uniswap pair for this new token
+        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+        _setAutomatedMarketMakerPair(dexPair, true);
+
+        isExcludedFromFees[owner()] = true;
+        isExcludedFromFees[address(this)] = true;
+        isExcludedFromFees[DEAD_ADDRESS] = true;
+        emit ExcludeFromFees(owner(), true);
+        emit ExcludeFromFees(address(this), true);
+        emit ExcludeFromFees(DEAD_ADDRESS, true);
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
@@ -78,12 +101,20 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit SetAutomatedMarketMakerPair(pair, value);
     }
 
+    // @dev create and add a new pair for a given token
+    function addNewPair(address tokenAddress) external onlyOwner returns (address np) {
+        address newPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), tokenAddress);
+        _setAutomatedMarketMakerPair(newPair, true);
+        emit AddNewPair(tokenAddress, newPair);
+        return newPair;
+    }
+    event AddNewPair(address indexed tokenAddress, address indexed newPair);
+
     receive() external payable {}
 
     function excludeFromFees(address account, bool excluded) public onlyOwner {
-        require(isExcludedFromFees[account] != excluded, "Already excluded");
+        require(isExcludedFromFees[account] != excluded, "Already set");
         isExcludedFromFees[account] = excluded;
-
         emit ExcludeFromFees(account, excluded);
     }
 
@@ -95,13 +126,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function setEcoSystemAddress(address newAddress) public onlyOwner {
         require(ecoSystemAddress != newAddress, "EcoSystem address already setted");
         ecoSystemAddress = newAddress;
-
         emit EcoSystemAddressUpdated(newAddress);
     }
 
     function setEcosystemFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(ecoSystemFee, newFee);
         ecoSystemFee = newFee;
+        _updateTotalFee();
         emit EcosystemFeeUpdated(newFee);
     }
 
@@ -114,12 +145,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function setLiquidityFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(liquidityFee, newFee);
         liquidityFee = newFee;
+        _updateTotalFee();
         emit LiquidityFeeUpdated(newFee);
     }
 
     function setBurnFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(burnFee, newFee);
         burnFee = newFee;
+        _updateTotalFee();
         emit BurnFeeUpdated(newFee);
     }
 
@@ -136,6 +169,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _setAutomatedMarketMakerPair(_dexPair, true);
 
         emit LiquidityStarted(router, _dexPair);
+    }
+
+    function _updateTotalFee() internal {
+        totalFees = liquidityFee.add(burnFee).add(ecoSystemFee);
     }
 
     function _swapAndLiquify(uint256 amount) private {
@@ -234,4 +271,35 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     event BurnFeeUpdated(uint256 indexed fee);
     event BurnFeeLimitUpdated(uint256 indexed limit);
     event LiquidityStarted(address indexed routerAddress, address indexed pairAddress);
+
+
+    // todo: make nonReentrant
+    function withdraw() onlyOwner public {
+        uint256 balance = address(this).balance;
+        Address.sendValue(payable(msg.sender), balance);
+        //        payable(msg.sender).transfer(balance);
+    }
+
+    // todo: make nonReentrant
+    /**
+     * @dev Withdraw any ERC20 token from this contract
+     * @param tokenAddress ERC20 token to withdraw
+     * @param to receiver address
+     * @param amount amount to withdraw
+     */
+    function withdrawERC20(
+        address tokenAddress,
+        address to,
+        uint256 amount
+    ) external virtual onlyOwner {
+        require(tokenAddress.isContract(), "ERC20 token address must be a contract");
+
+        IERC20 tokenContract = IERC20(tokenAddress);
+        require(
+            tokenContract.balanceOf(address(this)) >= amount,
+            "You are trying to withdraw more funds than available"
+        );
+
+        require(tokenContract.transfer(to, amount), "Fail on transfer");
+    }
 }
