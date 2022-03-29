@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
@@ -43,18 +44,19 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
     uint256 public burnFee;
 
-    uint256 public burnFeeLimit;
+    // @dev the total max value of the fee
+    uint256 public constant _maxFee = 10 ** 17;
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
 
-    uint256 public immutable TOTAL_SUPPLY;
-
     mapping(address => bool) public isExcludedFromFees;
 
+    // @dev default pair
     address public dexPair;
+
+    // @dev all other allowed pairs
     mapping(address => bool) public automatedMarketMakerPairs;
-    mapping(address => bool) public isBlacklisted;
 
     constructor() ERC20("MafaCoin", "MAFA") {
         excludeFromFees(address(this), true);
@@ -63,20 +65,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
 
-        TOTAL_SUPPLY = 1000000000 * (10** decimals());
-
-        _mint(owner(), TOTAL_SUPPLY);
+        _mint(owner(), 1000000000 * (10** decimals()));
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
         require(pair != dexPair, "cannot be removed");
-
         _setAutomatedMarketMakerPair(pair, value);
     }
 
     function _setAutomatedMarketMakerPair(address pair, bool value) private onlyOwner {
         automatedMarketMakerPairs[pair] = value;
-
         emit SetAutomatedMarketMakerPair(pair, value);
     }
 
@@ -89,6 +87,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit ExcludeFromFees(account, excluded);
     }
 
+    function checkFeesChanged(uint256 _oldFee, uint256 _newFee) internal view {
+        uint256 _fees = ecoSystemFee.add(liquidityFee).add(burnFee).add(_newFee).sub(_oldFee);
+        require(_fees <= _maxFee, "Fees exceeded max limitation");
+    }
+
     function setEcoSystemAddress(address newAddress) public onlyOwner {
         require(ecoSystemAddress != newAddress, "EcoSystem address already setted");
         ecoSystemAddress = newAddress;
@@ -97,39 +100,27 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function setEcosystemFee(uint256 newFee) public onlyOwner {
-        require(newFee.add(liquidityFee).add(burnFee) <= 10, "Fees too high");
+        checkFeesChanged(ecoSystemFee, newFee);
         ecoSystemFee = newFee;
-
         emit EcosystemFeeUpdated(newFee);
     }
 
     function setLiquidityAddress(address newAddress) public onlyOwner {
         require(liquidityAddress != newAddress, "Liquidity address already setted");
         liquidityAddress = newAddress;
-
         emit LiquidityAddressUpdated(newAddress);
     }
 
     function setLiquidityFee(uint256 newFee) public onlyOwner {
-        require(newFee.add(ecoSystemFee).add(burnFee) <= 10, "Fees too high");
+        checkFeesChanged(liquidityFee, newFee);
         liquidityFee = newFee;
-
         emit LiquidityFeeUpdated(newFee);
     }
 
     function setBurnFee(uint256 newFee) public onlyOwner {
-        require(newFee.add(ecoSystemFee).add(liquidityFee) <= 10, "Fees too high");
-        require(newFee <= burnFeeLimit, "New fee higher than burn fee limit");
+        checkFeesChanged(burnFee, newFee);
         burnFee = newFee;
-
         emit BurnFeeUpdated(newFee);
-    }
-
-    function setBurnFeeLimit(uint256 newLimit) public onlyOwner {
-        require(newLimit <= 10, "Limit too high");
-        burnFeeLimit = newLimit;
-
-        emit BurnFeeLimitUpdated(newLimit);
     }
 
     function startLiquidity(address router) external onlyOwner {
