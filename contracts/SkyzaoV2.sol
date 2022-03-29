@@ -44,9 +44,9 @@ contract SkyzaoV2 is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransac
     uint256 public totalBuyFee = 0;
     uint256 public totalSellFee = 0;
 
-    uint256 private constant TOTAL_SUPPLY = 1000000000 * 10**decimals();
+    uint256 private immutable TOTAL_SUPPLY;
 
-
+//
     mapping(address => bool) public isExcludedFromFees;
     mapping(address => bool) public automatedMarketMakerPairs;
     mapping(address => bool) public isBlacklisted;
@@ -57,6 +57,8 @@ contract SkyzaoV2 is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransac
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
+
+        TOTAL_SUPPLY = 1000000000 * 10**decimals();
 
         _maxFee = 1000;
 
