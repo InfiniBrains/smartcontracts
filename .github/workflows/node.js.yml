@@ -11,8 +11,9 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    env:
+      CHAINSTACK_PROVIDER: ${{ secrets.CHAINSTACK_PROVIDER }}
 
     strategy:
       matrix:
