@@ -1,3 +1,7 @@
+# InfiniBrains SmartContracts
+
+Take a look on our [Coverage](https://infinibrains.github.io/smartcontracts/) report.
+
 # Advanced Sample Hardhat Project
 
 This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.

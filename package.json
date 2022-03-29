@@ -45,7 +45,7 @@
     "coverage": "hardhat coverage",
     "start:coverage:server": "cd coverage & python -m http.server",
     "coverage:generate": "hardhat compile --show-stack-traces && hardhat coverage --show-stack-traces",
-    "coverage:generate:clean": "npm run clean && npm run generate",
+    "coverage:generate:clean": "npm run clean && npm run coverage:generate",
     "coverage:full": "npm run coverage:generate:clean && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
     "coverage:partial": "npm run coverage:generate && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
     "compile": "hardhat compile",
