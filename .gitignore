@@ -10,6 +10,4 @@ artifacts
 
 .idea/
 
-package-lock.json
-
 yarn.lock
