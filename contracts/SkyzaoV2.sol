@@ -102,14 +102,6 @@ contract SkyzaoV2 is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransac
         emit ExcludeFromFees(account, excluded);
     }
 
-    // Sets Blacklist Account who cannot transact
-    function blacklistAccount(address account, bool blacklisted) external onlyOwner {
-        require(isBlacklisted[account] != blacklisted, "Already blacklisted");
-        isBlacklisted[account] = blacklisted;
-
-        emit AccountBlacklisted(account, blacklisted);
-    }
-
     // Sets Liquidity Pool Recipient
     function setLpRecipient(address recipient) public onlyOwner {
         require(lpRecipient != recipient, "LP recipient already setted");
@@ -266,7 +258,6 @@ contract SkyzaoV2 is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransac
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-        require(!isBlacklisted[from], "Address is blacklisted");
         require(tradingIsEnabled || (isExcludedFromFees[from] || isExcludedFromFees[to]), "Trading not started");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
