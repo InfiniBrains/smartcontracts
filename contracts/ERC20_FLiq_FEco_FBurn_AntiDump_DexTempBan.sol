@@ -58,6 +58,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev just to simplify to the user, the total fees
     uint256 public totalFees = 0;
 
+    // @dev antiwhale mechanics
+    uint256 public maxTransferAmount;
+
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
 
@@ -73,6 +76,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
+        maxTransferAmount = 50 ether;
 
         _mint(owner(), totalSupply);
 
@@ -156,6 +160,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit BurnFeeUpdated(newFee);
     }
 
+    function setLockTime(uint timeBetweenTransactions) external onlyOwner {
+        _setLockTime(timeBetweenTransactions);
+    }
+
+    function setMaxTransferAmount(uint mta) external onlyOwner {
+        maxTransferAmount = mta;
+    }
+
     function startLiquidity(address router) external onlyOwner {
         require(router != address(0), "zero address is not allowed");
 
@@ -233,6 +245,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
+            require(amount <= maxTransferAmount, "Max transfer amount limit reached");
             if(automatedMarketMakerPairs[to]) {
                 require(canOperate(from), "the sender cannot operate yet");
                 lockToOperate(from);
@@ -252,6 +265,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 _swapAndLiquify(tokensToLiquidity);
             }
 
+            //@TODO burn tokens
             uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee);
             super._transfer(from, to, amountMinusFees);
         }
