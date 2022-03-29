@@ -8,12 +8,12 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
 * Transações tiram fees
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
+* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) [done: Ailton]
 * Fee de ecossistema da empresa(configurável pela empresa)
 * Fee de burn. (configurável pela empresa até certo limite)
 * Fees totais limitados a 10%
@@ -29,24 +29,22 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
-    uint256 ecoSystemFee;
+    uint256 public ecoSystemFee;
 
     // @dev which wallet will receive the ecosystem fee
-    address ecoSystemAddress;
+    address public ecoSystemAddress;
 
     // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 liquidityFee;
+    uint256 public liquidityFee;
 
     // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
-    address liquidityAddress;
+    address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 burnFee;
+    uint256 public burnFee;
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
-
-    address public lpRecipient;
 
     address public teamWallet;
     address public lotteryWallet;
@@ -63,7 +61,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public totalBuyFee = 0;
     uint256 public totalSellFee = 0;
 
-    uint256 public constant TOTAL_SUPPLY = 1000000000 * (10**_decimals);
+    uint256 public immutable TOTAL_SUPPLY;
 
     mapping(address => bool) public isExcludedFromFees;
 
@@ -78,6 +76,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
 
+        TOTAL_SUPPLY = 1000000000 * (10** decimals());
+
         _mint(owner(), TOTAL_SUPPLY);
     }
 
@@ -89,9 +89,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         setTeamBuyFee(1);
         setTeamSellFee(5);
         setLotterySellFee(1);
-        setLpRecipient(owner());
-
-        tradingIsEnabled = true;
+        setLiquidityAddress(owner());
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
@@ -122,11 +120,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit AccountBlacklisted(account, blacklisted);
     }
 
-    function setLpRecipient(address recipient) public onlyOwner {
-        require(lpRecipient != recipient, "LP recipient already setted");
-        lpRecipient = recipient;
+    function setLiquidityAddress(address recipient) public onlyOwner {
+        require(liquidityAddress != recipient, "LP recipient already setted");
+        liquidityAddress = recipient;
 
-        emit LpRecipientUpdated(recipient);
+        emit LiquidityAddressUpdated(recipient);
     }
 
     function setTeamWallet(address _newWallet) external onlyOwner {
@@ -264,7 +262,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             tokenAmount,
             0,
             0,
-            lpRecipient,
+            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
             block.timestamp.add(300)
         );
     }
@@ -278,7 +276,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
         require(!isBlacklisted[from], "Address is blacklisted");
-        require(tradingIsEnabled || (isExcludedFromFees[from] || isExcludedFromFees[to]), "Trading not started");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
 
@@ -360,7 +357,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     event ExcludeFromFees(address indexed account, bool isExcluded);
     event AccountBlacklisted(address indexed account, bool isBlacklisted);
-    event LpRecipientUpdated(address indexed lpRecipient);
+    event LiquidityAddressUpdated(address indexed liquidityAddress);
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
     event SwapAndLiquify(
         uint256 indexed tokensSwapped,
