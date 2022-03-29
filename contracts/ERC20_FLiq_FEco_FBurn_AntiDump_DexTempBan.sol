@@ -59,7 +59,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public totalFees = 0;
 
     // @dev antiwhale mechanics
-    uint256 public maxTransferAmount;
+    uint256 public maxTransferFee;
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -76,7 +76,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
-        maxTransferAmount = 50 ether;
+        maxTransferFee = 1 ether;
 
         _mint(owner(), totalSupply);
 
@@ -164,8 +164,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _setLockTime(timeBetweenTransactions);
     }
 
-    function setMaxTransferAmount(uint mta) external onlyOwner {
-        maxTransferAmount = mta;
+    function setMaxTransferFee(uint mtf) external onlyOwner {
+        maxTransferFee = mtf;
     }
 
     function startLiquidity(address router) external onlyOwner {
@@ -241,7 +241,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         require(amount > 0, "Transfer amount must be greater than zero");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
-
+        (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
+        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee);
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
