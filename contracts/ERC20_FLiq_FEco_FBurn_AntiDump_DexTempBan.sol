@@ -64,7 +64,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev just to simplify to the user, the total fees
     uint256 public totalFees = 0;
 
-    // @dev antiwhale mechanics
+    // @dev antidump mechanics
     uint256 public maxTransferFee;
 
     // @dev mapping of excluded from fees elements
@@ -75,13 +75,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
-
-    // @dev maximum token transaction
-    uint256 public _maxWalletToken;
-
-    // @dev lists the wallets that can make a transaction
-    mapping (address => bool) internal authorizations;
-
 
     constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) {
         excludeFromFees(address(this), true);
@@ -94,11 +87,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         totalSupplyAtt = totalSupply;
 
         _mint(owner(), totalSupply);
-
-        authorizations[owner()] = true;
-
-        //max wallet holding of 3% 
-        _maxWalletToken = ( totalSupply ).mul(3).div(10 ** decimals());
         
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
@@ -264,6 +252,25 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _;
     }
 
+    function getTokenAddressFromPair(address pairAddr) internal pure returns (address){
+        IUniswapV2Pair pairAddr = IUniswapV2Pair(pairAddr);
+        if(dexPair.token0() == address(this))
+            return dexPair.token1();
+        else if(dexPair.token1() == address(this))
+            return dexPair.token0();
+        revert("not a pair");
+    }
+
+    function getTokenVolumeFromPair(address pairAddr) internal pure returns (address){
+        (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(dexPair).getReserves();
+
+        if(dexPair.token0() == address(this))
+            return reserve0;
+        else if(dexPair.token1() == address(this))
+            return reserve1;
+        revert("not a pair");
+    }
+
     function _transfer(
         address from,
         address to,
@@ -276,20 +283,29 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         require(amount > 0, "Transfer amount must be greater than zero");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
-        // todo: the pair could be anothe one
-        (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
-        // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
-        uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
+
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
-            require(amount <= maxTransferAmount, "Max transfer amount limit reached");
-            if(automatedMarketMakerPairs[to]) { // selling tokens
-                require(canOperate(from), "the sender cannot operate yet");
-                lockToOperate(from);
-            } else if(automatedMarketMakerPairs[from]) { // buying tokens
-                require(canOperate(to), "the recipient cannot sell yet");
-                lockToOperate(to);
+            bool isSellingTokens = automatedMarketMakerPairs[to];
+            bool isBuyingTokens = automatedMarketMakerPairs[from];
+            bool isDexTransaction = isBuyingTokens || isSellingTokens;
+
+            if(isDexTransaction) {
+                // timelock dex transactions
+                if(automatedMarketMakerPairs[to]) { // selling tokens
+                    require(canOperate(from), "the sender cannot operate yet");
+                    lockToOperate(from);
+                } else if(automatedMarketMakerPairs[from]) { // buying tokens
+                    require(canOperate(to), "the recipient cannot sell yet");
+                    lockToOperate(to);
+                }
+
+//                // antidump
+//                address otherTokenFromPair = getTokenAddressFromPair();
+//                // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
+//                uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
+//                require(amount <= maxTransferAmount, "Max transfer amount limit reached");
             }
 
             uint256 tokenToEcoSystem=0;
@@ -310,11 +326,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
-
-            if (!authorizations[from] && to != address(this)  && to != address(DEAD_ADDRESS)){
-                uint256 heldTokens = balanceOf(to);
-            require((heldTokens + amount) <= _maxWalletToken,"Total Holding is currently limited, you can not buy that much.");}
-
 
             // todo: test this!
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
@@ -365,26 +376,5 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
-    }
-
-    //settting the maximum permitted wallet holding (percent of total supply)
-    function setMaxWalletPercent(uint256 maxWallPercent) external onlyOwner() {
-        _maxWalletToken = (totalSupplyAtt).mul(maxWallPercent).div(10 ** decimals());
-    }
-
-    //Authorize address. Owner only
-    function authorize(address adr) public onlyOwner {
-        authorizations[adr] = true;
-    }
-
-    
-    //Remove address' authorization. Owner only
-    function unauthorize(address adr) public onlyOwner {
-        authorizations[adr] = false;
-    }
-
-    //Return address' authorization status
-    function isAuthorized(address adr) public view returns (bool) {
-        return authorizations[adr];
     }
 }
