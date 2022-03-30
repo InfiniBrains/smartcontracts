@@ -49,6 +49,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev the total max value of the fee
     uint256 public constant _maxFee = 10 ** 17; // 10%
 
+    // @dev the total supply value of the contract
+    uint256 public totalSupplyAtt;
+
     // @dev the BUSD address
     address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
 
@@ -87,6 +90,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
         maxTransferFee = 1 ether;
+
+        totalSupplyAtt = totalSupply;
 
         _mint(owner(), totalSupply);
 
@@ -364,7 +369,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     //settting the maximum permitted wallet holding (percent of total supply)
     function setMaxWalletPercent(uint256 maxWallPercent) external onlyOwner() {
-        _maxWalletToken = (address(this).totalSupply.value).mul(maxWallPercent).div(10 ** decimals());
+        _maxWalletToken = (totalSupplyAtt).mul(maxWallPercent).div(10 ** decimals());
     }
 
     //Authorize address. Owner only
