@@ -179,6 +179,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     // todo: fix: company shouldnt have the ability to set maxTransferFee to zero and block all transactions
     function setMaxTransferFee(uint mtf) external onlyOwner {
+        require(mtf > 0, "Can't to set maxTransferFee to zero");
         maxTransferFee = mtf;
     }
 
