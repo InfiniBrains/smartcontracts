@@ -23,7 +23,6 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         await ethers.getSigners();
     });
 
-    
     beforeEach(async function () {
         const ERC20Factory = <ERC20FLiqFEcoFBurnAntiDumpDexTempBan__factory>(
             await ethers.getContractFactory("ERC20FLiqFEcoFBurnAntiDumpDexTempBan")
@@ -32,17 +31,17 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         contract = await contract.deployed();
     });
 
-    /*
     it("Should be constructed properly", async function () {
         expect(await contract.name()).to.equal("Test");
         expect(await contract.symbol()).to.equal("ERT");
-        //expect(await contract.totalSupply()).to.equal(
-        //utils.parseUnits("1000000000", 9).toString()
-        //);
-        expect(await contract.decimals()).to.equal(9);
-        //expect(await contract.balanceOf(owner.address)).to.equal(
-        //await contract.totalSupply()
-        //);
+        expect(await contract.totalSupply()).to.equal(
+            utils.parseUnits("1000000000", 0).toString()
+        );
+        expect(await contract.decimals()).to.equal(18);
+        expect(await contract.balanceOf(owner.address)).to.equal(
+            await contract.totalSupply()
+        );
+
         expect(
         await contract.isExcludedFromFees(await contract.DEAD_ADDRESS())
         ).to.equal(true);
@@ -50,6 +49,12 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         expect(await contract.isExcludedFromFees(await contract.owner())).to.equal(
         true
         );
+    });
+
+    // procurar como adicionar BUSD para cá
+    /*
+    it("Should be able to create a new pair", async function () {
+        await contract._swapTokensForBNB(100);
     });
     */
 });
