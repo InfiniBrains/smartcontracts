@@ -51,6 +51,100 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         );
     });
 
+    it("Should be able to create a new pair", async function () {
+        const tx = await contract.addNewPair(
+            "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
+        ); // BUSD address
+        const receipt = await tx.wait();
+        const newPair: string = utils.defaultAbiCoder.decode(
+            ["address"],
+            receipt.logs[2].topics[2]
+        )[0];
+    
+        expect(await contract.automatedMarketMakerPairs(newPair)).to.equal(true);
+        await expect(
+            contract.addNewPair("0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56")
+        ).to.be.revertedWith("Pancake: PAIR_EXISTS"); // should fail
+    });
+
+    it("Should be able to transfer without fees", async function () {
+        // owner transfer: should charge small fees
+        
+        await contract
+            .connect(owner)
+            .transfer(address1.address, expandTo9Decimals("1"));
+        expect(
+            await contract.connect(address1).balanceOf(address1.address)
+        ).to.equal(expandTo9Decimals("1"));
+    
+        await contract.setBurnFee(0);
+        await contract.setEcosystemFee(0);
+        await contract.setMaxTransferFee(3);
+        await contract.setLiquidityFee(0);
+    
+        await contract
+            .connect(address1)
+            .transfer(address2.address, expandTo9Decimals("0.9"));
+    
+        // expect the burn address have the tokens
+        expect(await contract.balanceOf(address2.address)).to.equal(
+            expandTo9Decimals("0.9")
+        );
+    });
+
+    describe("Fees", function () {
+        beforeEach(async function () {
+            await contract.setBurnFee(0);
+            await contract.setEcosystemFee(0);
+            await contract.setMaxTransferFee(3);
+            await contract.setLiquidityFee(0);
+    
+            await contract
+                .connect(owner)
+                .transfer(address1.address, expandTo9Decimals("1"));
+        });
+    
+    
+        describe("Liquidity fee", function () {
+            const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+            let router: Contract;
+        
+            before(async function () {
+                router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
+            });
+    
+            beforeEach(async function () {
+                const TokenAmount = expandTo9Decimals("100000");
+        
+                const BNBAmount = expandTo9Decimals("1000");
+        
+                await contract.approve(ROUTER_ADDRESS, ethers.constants.MaxUint256);
+        
+                // add liquidity to liquidity pool
+                await router
+                .connect(owner)
+                .addLiquidityETH(
+                    contract.address,
+                    TokenAmount,
+                    0,
+                    0,
+                    owner.address,
+                    ethers.constants.MaxUint256,
+                    { value: BNBAmount }
+                );
+    
+                await contract.setLiquidityFee(1000);
+        
+                await contract.transfer(address1.address, expandTo9Decimals("510"));
+            });
+        });
+    });
+
+    it("Automated Market Maker Pair", async function () {
+
+        expect(await contract.setAutomatedMarketMakerPair(DEAD_ADDRESS, true));
+    });
+      
     // procurar como adicionar BUSD para cá
     /*
     it("Should be able to create a new pair", async function () {
