@@ -272,20 +272,20 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
             uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
-                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** 18);
+                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** decimals());
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
             uint256 tokensToLiquidity=0;
             if (liquidityFee > 0) {
-                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(10 ** 18);
+                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                 super._transfer(from, address(this), tokensToLiquidity);
                 _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair. make it work to other pairs
             }
 
             uint256 tokensToBurn=0;
             if (burnFee > 0) {
-                uint256 tokensToBurn = amount.mul(burnSellFee).div(10 ** 18); // never use only 2 decimals precision, you should use 18 decimals here
+                uint256 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
