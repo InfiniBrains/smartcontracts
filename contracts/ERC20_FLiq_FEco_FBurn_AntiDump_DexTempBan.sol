@@ -22,6 +22,7 @@ import "./TimeLockDexTransactions.sol";
 *   Upgradeable para próximo token
 *   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
 *   Time lock dex transactions
+*   Dex Pair baseado em BUSD
 *   Impedir que as pessoas criem pares sem autorizacao da empresa.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
@@ -48,9 +49,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     // @dev the total max value of the fee
     uint256 public constant MAXFEE = 10 ** 17; // 10%
-
-    // @dev the total supply value of the contract
-    uint256 public totalSupplyAtt;
 
     // @dev the BUSD address
     address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
@@ -85,8 +83,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
-
-        totalSupplyAtt = totalSupply;
 
         _mint(owner(), totalSupply);
         
@@ -326,7 +322,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
             uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-            require(volume <= maxVolume, "anti dump measure");
+            require(amount <= maxVolume, "anti dump measure");
         }
     }
 
