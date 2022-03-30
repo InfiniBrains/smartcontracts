@@ -183,21 +183,40 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uint256 half = amount.div(2);
         uint256 otherHalf = amount.sub(half);
 
-        uint256 initialAmount = address(this).balance;
+        // uint256 initialAmount = address(this).balance;
+        uint256 initialAmount = IERC20(_BUSD).balanceOf(address(this));
 
-        _swapTokensForBNB(half);
+        _swapTokensForBUSD(half);
 
-        uint256 newAmount = address(this).balance.sub(initialAmount);
+//        uint256 newAmount = address(this).balance.sub(initialAmount);
+        uint256 newAmount = IERC20(_BUSD).balanceOf(address(this)).sub(initialAmount);
 
-        _addLiquidity(otherHalf, newAmount);
+        // _addLiquidity(otherHalf, newAmount);
+        _addLiquidityBUSD(otherHalf, newAmount);
 
         emit SwapAndLiquify(half, newAmount, otherHalf);
+    }
+
+    function _swapTokensForBUSD(uint256 tokenAmount) private {
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = _BUSD;
+
+        _approve(address(this), address(dexRouter), tokenAmount);
+
+        dexRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            tokenAmount,
+            0,
+            path,
+            address(this),
+            block.timestamp.add(300)
+        );
     }
 
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = _BUSD; // TODO: test if this is something viable. the oldest value was "path[1] = dexRouter.WETH();"
+        path[1] = dexRouter.WETH(); // TODO: test if this is something viable. the oldest value was "path[1] = dexRouter.WETH();"
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
@@ -207,6 +226,22 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             0,
             path,
             address(this),
+            block.timestamp.add(300)
+        );
+    }
+
+    function _addLiquidityBUSD(uint256 tokenAmount, uint256 busdAmount) private {
+        _approve(address(this), address(dexRouter), tokenAmount);
+
+        // https://docs.uniswap.org/protocol/V2/reference/smart-contracts/router-02#addliquidity
+        dexRouter.addLiquidity(
+            address(this),
+            _BUSD,
+            tokenAmount,
+            busdAmount,
+            0,
+            0,
+            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
             block.timestamp.add(300)
         );
     }
@@ -313,7 +348,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         } else {
             timeLockCheck(from,to);
             antiDumpCheck(from, to, amount);
-            
+
             uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
                 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** decimals());
