@@ -14,15 +14,15 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
-* Transações tiram fees
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) [done: Ailton, Tolsta]
-* Fee de ecossistema da empresa(configurável pela empresa) [done: Ailton]
-* Fee de burn. (configurável pela empresa até certo limite) [done: Ailton]
-* Fees totais limitados a 10% [done: Tolsta]
-* Upgradeable para próximo token
-* Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-* Time lock dex transactions [done: Ailton]
-* Receber fees em BNB ou BUSD (não obrigatório)
+* Features:
+*   Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
+*   Fee de ecossistema da empresa(configurável pela empresa)
+*   Fee de burn. (configurável pela empresa até certo limite)
+*   Fees totais limitados a 10%
+*   Upgradeable para próximo token
+*   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
+*   Time lock dex transactions
+*   Impedir que as pessoas criem pares sem autorizacao da empresa.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
@@ -231,11 +231,36 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
     }
 
+    function compareStrings(string memory a, string memory b) public pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    modifier _checkIfPairIsAuthorized(address from, address to) {
+        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+        if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
+            try IUniswapV2Pair(from).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        if(Address.isContract(to) && !automatedMarketMakerPairs[to]) {
+            try IUniswapV2Pair(to).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP"))
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        _;
+    }
+
     function _transfer(
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override
+    _checkIfPairIsAuthorized(from, to) // todo: test this better
+    {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
