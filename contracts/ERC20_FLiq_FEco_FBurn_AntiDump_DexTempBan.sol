@@ -271,20 +271,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             }
 
             if (ecoSystemFee > 0) {
-<<<<<<< HEAD
                 uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** 18);
-=======
-                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
->>>>>>> 3866bf79243dd5ce7713165d780b97141eeddf36
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
             if (liquidityFee > 0) {
-<<<<<<< HEAD
                 uint256 tokensToLiquidity = amount.mul(liquidityFee).div(10 ** 18);
-=======
-                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
->>>>>>> 3866bf79243dd5ce7713165d780b97141eeddf36
                 super._transfer(from, address(this), tokensToLiquidity);
                 _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
             }
