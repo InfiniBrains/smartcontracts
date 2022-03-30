@@ -316,9 +316,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         }
     }
 
-    function setAntiDump(uint256 newThreshold, uint256 newFee) onlyOwner {
+    function setAntiDump(uint256 newThreshold, uint256 newFee) external onlyOwner {
         require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "new threshold is not acceptable");
-        require(newfee<=ANTI_DUMP_FEE_LIMIT, "new fee is not acceptable");
+        require(newFee<=ANTI_DUMP_FEE_LIMIT, "new fee is not acceptable");
 
         antiDumpThreshold = newThreshold;
         antiDumpFee = newFee;
