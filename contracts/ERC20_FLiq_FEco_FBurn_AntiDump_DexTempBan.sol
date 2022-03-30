@@ -284,22 +284,23 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function antiDumpCheck(address from, address to, uint256 amount) internal {
-        //            if(isDexTransaction) {
-        //                // timelock dex transactions
-        //                if(automatedMarketMakerPairs[to]) { // selling tokens
-        //                    require(canOperate(from), "the sender cannot operate yet");
-        //                    lockToOperate(from);
-        //                } else if(automatedMarketMakerPairs[from]) { // buying tokens
-        //                    require(canOperate(to), "the recipient cannot sell yet");
-        //                    lockToOperate(to);
-        //                }
-        //
-        ////                // antidump
-        ////                address otherTokenFromPair = getTokenAddressFromPair();
-        ////                // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
-        ////                uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
-        ////                require(amount <= maxTransferAmount, "Max transfer amount limit reached");
-        //            }
+        address pair = DEAD_ADDRESS;
+
+        if(automatedMarketMakerPairs[from])
+            pair = from;
+        else if(automatedMarketMakerPairs[to])
+            pair = to;
+
+        if(pair!=DEAD_ADDRESS) {
+            // timelock dex transactions
+
+            // antidump
+            address otherTokenFromPair = getTokenAddressFromPair(pair);
+            // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
+
+//            uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
+//                        require(amount <= maxTransferAmount, "Max transfer amount limit reached");
+        }
     }
 
     function _transfer(
@@ -343,7 +344,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             // todo: test this!
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
-//            super._transfer(from,to, amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn));
         }
     }
 
