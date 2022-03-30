@@ -47,7 +47,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public burnFee;
 
     // @dev the total max value of the fee
-    uint256 public constant _maxFee = 10 ** 17;
+    uint256 public constant _maxFee = 10 ** 17; // 10%
 
     // @dev the BUSD address
     address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
@@ -199,6 +199,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
+        // todo: change this to swapExactTokensForTokensSupportingFeeOnTransferTokens bc we are using busd as 2nd element of the pair
         dexRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokenAmount,
             0,
@@ -211,6 +212,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
         _approve(address(this), address(dexRouter), tokenAmount);
 
+        // TODO: make it work with BUSD use addLiquidity https://docs.uniswap.org/protocol/V2/reference/smart-contracts/router-02#addliquidity
         dexRouter.addLiquidityETH{ value: bnbAmount }(
             address(this),
             tokenAmount,
@@ -256,7 +258,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         require(amount > 0, "Transfer amount must be greater than zero");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
+        // todo: the pair could be anothe one
         (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
+        // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
         uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
         if (excludedAccount) {
             super._transfer(from, to, amount);
@@ -289,6 +293,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
+            // todo: test this!
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
         }
