@@ -252,23 +252,35 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _;
     }
 
-    function getTokenAddressFromPair(address pairAddr) internal pure returns (address){
-        IUniswapV2Pair pairAddr = IUniswapV2Pair(pairAddr);
-        if(dexPair.token0() == address(this))
-            return dexPair.token1();
-        else if(dexPair.token1() == address(this))
-            return dexPair.token0();
+    function getTokenAddressFromPair(address pairAddr) internal returns (address){
+        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
+        if(pair.token0() == address(this))
+            return pair.token1();
+        else if(pair.token1() == address(this))
+            return pair.token0();
         revert("not a pair");
     }
 
-    function getTokenVolumeFromPair(address pairAddr) internal pure returns (address){
-        (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(dexPair).getReserves();
+    function getTokenVolumeFromPair(address pairAddr) internal returns (uint256){
+        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
+        (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairAddr).getReserves();
 
-        if(dexPair.token0() == address(this))
+        if(pair.token0() == address(this))
             return reserve0;
-        else if(dexPair.token1() == address(this))
+        else if(pair.token1() == address(this))
             return reserve1;
         revert("not a pair");
+    }
+
+    function timeLockCheck(address from, address to) internal {
+        // timelock dex transactions
+        if(automatedMarketMakerPairs[to]) { // selling tokens
+            require(canOperate(from), "the sender cannot operate yet");
+            lockToOperate(from);
+        } else if(automatedMarketMakerPairs[from]) { // buying tokens
+            require(canOperate(to), "the recipient cannot sell yet");
+            lockToOperate(to);
+        }
     }
 
     function _transfer(
@@ -287,26 +299,23 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
-            bool isSellingTokens = automatedMarketMakerPairs[to];
-            bool isBuyingTokens = automatedMarketMakerPairs[from];
-            bool isDexTransaction = isBuyingTokens || isSellingTokens;
-
-            if(isDexTransaction) {
-                // timelock dex transactions
-                if(automatedMarketMakerPairs[to]) { // selling tokens
-                    require(canOperate(from), "the sender cannot operate yet");
-                    lockToOperate(from);
-                } else if(automatedMarketMakerPairs[from]) { // buying tokens
-                    require(canOperate(to), "the recipient cannot sell yet");
-                    lockToOperate(to);
-                }
-
-//                // antidump
-//                address otherTokenFromPair = getTokenAddressFromPair();
-//                // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
-//                uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
-//                require(amount <= maxTransferAmount, "Max transfer amount limit reached");
-            }
+            timeLockCheck(from,to);
+//            if(isDexTransaction) {
+//                // timelock dex transactions
+//                if(automatedMarketMakerPairs[to]) { // selling tokens
+//                    require(canOperate(from), "the sender cannot operate yet");
+//                    lockToOperate(from);
+//                } else if(automatedMarketMakerPairs[from]) { // buying tokens
+//                    require(canOperate(to), "the recipient cannot sell yet");
+//                    lockToOperate(to);
+//                }
+//
+////                // antidump
+////                address otherTokenFromPair = getTokenAddressFromPair();
+////                // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
+////                uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
+////                require(amount <= maxTransferAmount, "Max transfer amount limit reached");
+//            }
 
             uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
@@ -328,8 +337,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             }
 
             // todo: test this!
-            uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
-            super._transfer(from, to, amountMinusFees);
+//            uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
+//            super._transfer(from, to, amountMinusFees);
+            super._transfer(from,to, amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn));
         }
     }
 
