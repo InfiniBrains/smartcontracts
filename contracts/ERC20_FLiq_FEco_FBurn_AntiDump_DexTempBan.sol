@@ -73,6 +73,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
 
+    //max wallet holding of 3% 
+    uint256 public _maxWalletToken = ( totalSupply * 3 ) / 100;
+
+    //lists the wallets that can make a transaction
+    mapping (address => bool) internal authorizations;
+
+
     constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
@@ -83,6 +90,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         _mint(owner(), totalSupply);
 
+        authorizations[owner()] = true;
+        
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
 
@@ -286,6 +295,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
+            if (!authorizations[from] && to != address(this)  && to != address(DEAD_ADDRESS) && to != ecoSystemFee && to != liquidityFee){
+            uint256 heldTokens = balanceOf(to);
+            require((heldTokens + amount) <= _maxWalletToken,"Total Holding is currently limited, you can not buy that much.");}
+
+
             // todo: fix this sum
             uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee).sub(burnFee);
             super._transfer(from, to, amountMinusFees);
@@ -335,5 +349,26 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
+    }
+
+    //settting the maximum permitted wallet holding (percent of total supply)
+    function setMaxWalletPercent(uint256 maxWallPercent) external onlyOwner() {
+        _maxWalletToken = (totalSupply * maxWallPercent ) / 100;
+    }
+
+    //Authorize address. Owner only
+    function authorize(address adr) public onlyOwner {
+        authorizations[adr] = true;
+    }
+
+    
+    //Remove address' authorization. Owner only
+    function unauthorize(address adr) public onlyOwner {
+        authorizations[adr] = false;
+    }
+
+    //Return address' authorization status
+    function isAuthorized(address adr) public view returns (bool) {
+        return authorizations[adr];
     }
 }
