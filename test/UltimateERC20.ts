@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-
+/*
 import { expect } from "chai";
 import { ethers, network, waffle } from "hardhat";
 import { UltimateERC20, UltimateERC20__factory } from "../typechain";
@@ -312,3 +312,4 @@ describe.only("UltimateCoin", function () {
   //   await contract.setTaxFeePercent(0, 0);
   // });
 });
+*/
