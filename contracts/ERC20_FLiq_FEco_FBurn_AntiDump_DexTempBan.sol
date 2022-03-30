@@ -70,12 +70,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
 
+    //Allows for contract ownership along with multi-address authorization
     mapping (address => bool) internal authorizations;
+    address internal owner;
 
     //max wallet holding of 3% 
     uint256 public _maxWalletToken = ( totalSupply * 3 ) / 100;
 
-    constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, uint256 totalSupply, address _owner) ERC20(name, symbol) {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
 
@@ -85,6 +87,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         _mint(owner(), totalSupply);
 
+        owner = _owner;
         authorizations[_owner] = true;
 
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
