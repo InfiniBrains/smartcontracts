@@ -73,10 +73,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
 
-    //max wallet holding of 3% 
-    uint256 public _maxWalletToken = ( totalSupply * 3 ) / 100;
+    // @dev maximum token transaction
+    uint256 public _maxWalletToken;
 
-    //lists the wallets that can make a transaction
+    // @dev lists the wallets that can make a transaction
     mapping (address => bool) internal authorizations;
 
 
@@ -91,6 +91,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _mint(owner(), totalSupply);
 
         authorizations[owner()] = true;
+
+        //max wallet holding of 3% 
+        _maxWalletToken = ( totalSupply ).mul(3).div(10 ** decimals());
         
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
@@ -271,7 +274,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         // todo: the pair could be anothe one
         (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
         // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
-        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
+        uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
@@ -302,6 +305,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 uint256 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
+
+            if (!authorizations[from] && to != address(this)  && to != address(DEAD_ADDRESS)){
+                uint256 heldTokens = balanceOf(to);
+            require((heldTokens + amount) <= _maxWalletToken,"Total Holding is currently limited, you can not buy that much.");}
+
 
             // todo: test this!
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
@@ -356,7 +364,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     //settting the maximum permitted wallet holding (percent of total supply)
     function setMaxWalletPercent(uint256 maxWallPercent) external onlyOwner() {
-        _maxWalletToken = (totalSupply * maxWallPercent ) / 100;
+        _maxWalletToken = (totalSupply * maxWallPercent ) / 10 ** decimals();
     }
 
     //Authorize address. Owner only
