@@ -282,7 +282,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             }
 
             if (burnFee > 0) {
-                uint256 tokensToBurn = amount.mul(burnSellFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                uint256 tokensToBurn = amount.mul(burnSellFee).div(10 ** 18); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
