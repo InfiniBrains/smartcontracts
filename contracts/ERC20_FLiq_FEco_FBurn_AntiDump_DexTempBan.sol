@@ -14,15 +14,15 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockDexTransactions.sol";
 
 /**
-* Transações tiram fees
-* Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa) [done: Ailton, Tolsta]
-* Fee de ecossistema da empresa(configurável pela empresa) [done: Ailton]
-* Fee de burn. (configurável pela empresa até certo limite) [done: Ailton]
-* Fees totais limitados a 10% [done: Tolsta]
-* Upgradeable para próximo token
-* Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-* Time lock dex transactions [done: Ailton]
-* Receber fees em BNB ou BUSD (não obrigatório)
+* Features:
+*   Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
+*   Fee de ecossistema da empresa(configurável pela empresa)
+*   Fee de burn. (configurável pela empresa até certo limite)
+*   Fees totais limitados a 10%
+*   Upgradeable para próximo token
+*   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
+*   Time lock dex transactions
+*   Impedir que as pessoas criem pares sem autorizacao da empresa.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
@@ -48,6 +48,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     // @dev the total max value of the fee
     uint256 public constant _maxFee = 10 ** 17;
+
+    // @dev the BUSD address
+    address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -84,7 +87,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
 
         // Create a uniswap pair for this new token
-        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+//        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), _BUSD); // busd address
         _setAutomatedMarketMakerPair(dexPair, true);
 
         isExcludedFromFees[owner()] = true;
@@ -164,23 +168,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _setLockTime(timeBetweenTransactions);
     }
 
+    // todo: fix: company shouldnt have the ability to set maxTransferFee to zero and block all transactions
     function setMaxTransferFee(uint mtf) external onlyOwner {
         maxTransferFee = mtf;
-    }
-
-    function startLiquidity(address router) external onlyOwner {
-        require(router != address(0), "zero address is not allowed");
-
-        IUniswapV2Router02 _dexRouter = IUniswapV2Router02(router);
-
-        address _dexPair = IUniswapV2Factory(_dexRouter.factory()).createPair(address(this), _dexRouter.WETH());
-
-        dexRouter = _dexRouter;
-        dexPair = _dexPair;
-
-        _setAutomatedMarketMakerPair(_dexPair, true);
-
-        emit LiquidityStarted(router, _dexPair);
     }
 
     function _updateTotalFee() internal {
@@ -205,7 +195,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = dexRouter.WETH();
+        path[1] = _BUSD;
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
@@ -231,43 +221,81 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         );
     }
 
+    function compareStrings(string memory a, string memory b) public pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    modifier _checkIfPairIsAuthorized(address from, address to) {
+        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+        if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
+            try IUniswapV2Pair(from).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        if(Address.isContract(to) && !automatedMarketMakerPairs[to]) {
+            try IUniswapV2Pair(to).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP"))
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        _;
+    }
+
     function _transfer(
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override
+    _checkIfPairIsAuthorized(from, to) // todo: test this better
+    {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
         (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
-        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee);
+        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
             require(amount <= maxTransferAmount, "Max transfer amount limit reached");
-            if(automatedMarketMakerPairs[to]) {
+            if(automatedMarketMakerPairs[to]) { // selling tokens
                 require(canOperate(from), "the sender cannot operate yet");
                 lockToOperate(from);
-            } else {
+            } else if(automatedMarketMakerPairs[from]) { // buying tokens
                 require(canOperate(to), "the recipient cannot sell yet");
                 lockToOperate(to);
             }
 
             if (ecoSystemFee > 0) {
+<<<<<<< HEAD
                 uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** 18);
+=======
+                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+>>>>>>> 3866bf79243dd5ce7713165d780b97141eeddf36
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
             if (liquidityFee > 0) {
+<<<<<<< HEAD
                 uint256 tokensToLiquidity = amount.mul(liquidityFee).div(10 ** 18);
+=======
+                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+>>>>>>> 3866bf79243dd5ce7713165d780b97141eeddf36
                 super._transfer(from, address(this), tokensToLiquidity);
-                _swapAndLiquify(tokensToLiquidity);
+                _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
             }
 
-            //@TODO burn tokens
-            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee);
+            if (burnFee > 0) {
+                uint256 tokensToBurn = amount.mul(burnSellFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                super._transfer(from, DEAD_ADDRESS, tokensToBurn);
+            }
+
+            // todo: fix this sum
+            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee).sub(burnFee);
             super._transfer(from, to, amountMinusFees);
         }
     }
@@ -292,7 +320,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function withdraw() onlyOwner public {
         uint256 balance = address(this).balance;
         Address.sendValue(payable(msg.sender), balance);
-        //        payable(msg.sender).transfer(balance);
     }
 
     // todo: make nonReentrant
