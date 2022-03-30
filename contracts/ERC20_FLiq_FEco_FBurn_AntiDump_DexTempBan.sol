@@ -262,10 +262,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             super._transfer(from, to, amount);
         } else {
             require(amount <= maxTransferAmount, "Max transfer amount limit reached");
-            if(automatedMarketMakerPairs[to]) {
+            if(automatedMarketMakerPairs[to]) { // selling tokens
                 require(canOperate(from), "the sender cannot operate yet");
                 lockToOperate(from);
-            } else {
+            } else if(automatedMarketMakerPairs[from]) { // buying tokens
                 require(canOperate(to), "the recipient cannot sell yet");
                 lockToOperate(to);
             }
@@ -281,8 +281,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
             }
 
-            //@TODO burn tokens
-            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee);
+            if (burnFee > 0) {
+                uint256 tokensToBurn = amount.mul(burnSellFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                super._transfer(from, DEAD_ADDRESS, tokensToBurn);
+            }
+
+            // todo: fix this sum
+            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee).sub(burnFee);
             super._transfer(from, to, amountMinusFees);
         }
     }
