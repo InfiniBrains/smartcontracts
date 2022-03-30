@@ -49,6 +49,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     // @dev the total max value of the fee
     uint256 public constant _maxFee = 10 ** 17;
 
+    // @dev the BUSD address
+    address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
+
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
 
@@ -84,7 +87,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
 
         // Create a uniswap pair for this new token
-        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+//        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), _BUSD); // busd address
         _setAutomatedMarketMakerPair(dexPair, true);
 
         isExcludedFromFees[owner()] = true;
@@ -168,21 +172,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         maxTransferFee = mtf;
     }
 
-    function startLiquidity(address router) external onlyOwner {
-        require(router != address(0), "zero address is not allowed");
-
-        IUniswapV2Router02 _dexRouter = IUniswapV2Router02(router);
-
-        address _dexPair = IUniswapV2Factory(_dexRouter.factory()).createPair(address(this), _dexRouter.WETH());
-
-        dexRouter = _dexRouter;
-        dexPair = _dexPair;
-
-        _setAutomatedMarketMakerPair(_dexPair, true);
-
-        emit LiquidityStarted(router, _dexPair);
-    }
-
     function _updateTotalFee() internal {
         totalFees = liquidityFee.add(burnFee).add(ecoSystemFee);
     }
@@ -205,7 +194,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = dexRouter.WETH();
+        path[1] = _BUSD;
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
@@ -288,7 +277,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             if (liquidityFee > 0) {
                 uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100);
                 super._transfer(from, address(this), tokensToLiquidity);
-                _swapAndLiquify(tokensToLiquidity);
+                _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
             }
 
             //@TODO burn tokens
