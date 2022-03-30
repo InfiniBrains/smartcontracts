@@ -168,6 +168,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _setLockTime(timeBetweenTransactions);
     }
 
+    // todo: fix: company shouldnt have the ability to set maxTransferFee to zero and block all transactions
     function setMaxTransferFee(uint mtf) external onlyOwner {
         maxTransferFee = mtf;
     }
@@ -256,7 +257,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         bool excludedAccount = isExcludedFromFees[from] || isExcludedFromFees[to];
         (uint112 reserve0, , ) = IUniswapV2Pair(dexPair).getReserves();
-        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee);
+        uint maxTransferAmount = uint256(reserve0).div(100).mul(maxTransferFee); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
@@ -270,12 +271,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             }
 
             if (ecoSystemFee > 0) {
-                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100);
+                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
             if (liquidityFee > 0) {
-                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100);
+                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, address(this), tokensToLiquidity);
                 _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
             }
@@ -306,7 +307,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function withdraw() onlyOwner public {
         uint256 balance = address(this).balance;
         Address.sendValue(payable(msg.sender), balance);
-        //        payable(msg.sender).transfer(balance);
     }
 
     // todo: make nonReentrant
