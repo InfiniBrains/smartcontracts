@@ -195,7 +195,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = _BUSD;
+        path[1] = _BUSD; // TODO: test if this is something viable. the oldest value was "path[1] = dexRouter.WETH();"
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
@@ -270,24 +270,26 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 lockToOperate(to);
             }
 
+            uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
-                uint256 tokenToEcoSystem = amount.mul(ecoSystemFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                tokenToEcoSystem = amount.mul(ecoSystemFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
+            uint256 tokensToLiquidity=0;
             if (liquidityFee > 0) {
-                uint256 tokensToLiquidity = amount.mul(liquidityFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                tokensToLiquidity = amount.mul(liquidityFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, address(this), tokensToLiquidity);
-                _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair
+                _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair. make it work to other pairs
             }
 
+            uint256 tokensToBurn=0;
             if (burnFee > 0) {
-                uint256 tokensToBurn = amount.mul(burnSellFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
+                tokensToBurn = amount.mul(burnSellFee).div(100); // never use only 2 decimals precision, you should use 18 decimals here
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
-            // todo: fix this sum
-            uint256 amountMinusFees = amount.sub(ecoSystemFee).sub(liquidityFee).sub(burnFee);
+            uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
         }
     }
