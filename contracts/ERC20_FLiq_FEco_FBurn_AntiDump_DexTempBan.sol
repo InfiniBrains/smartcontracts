@@ -47,7 +47,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public burnFee;
 
     // @dev the total max value of the fee
-    uint256 public constant _maxFee = 10 ** 17; // 10%
+    uint256 public constant MAXFEE = 10 ** 17; // 10%
 
     // @dev the total supply value of the contract
     uint256 public totalSupplyAtt;
@@ -65,7 +65,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public totalFees = 0;
 
     // @dev antidump mechanics
-    uint256 public maxTransferFee;
+    uint256 public antiDumpThreshold = 10**16; // 1%
+
+    // @dev antidump mechanics
+    uint256 public constant MAX_ANTI_DUMP_THRESHOLD = 10**16; // 1%
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -82,7 +85,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         ecoSystemAddress = owner();
         liquidityAddress = DEAD_ADDRESS;
-        maxTransferFee = 1 ether;
 
         totalSupplyAtt = totalSupply;
 
@@ -133,7 +135,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     function checkFeesChanged(uint256 _oldFee, uint256 _newFee) internal view {
         uint256 _fees = ecoSystemFee.add(liquidityFee).add(burnFee).add(_newFee).sub(_oldFee);
-        require(_fees <= _maxFee, "Fees exceeded max limitation");
+        require(_fees <= MAXFEE, "Fees exceeded max limitation");
     }
 
     function setEcoSystemAddress(address newAddress) public onlyOwner {
@@ -171,12 +173,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     function setLockTime(uint timeBetweenTransactions) external onlyOwner {
         _setLockTime(timeBetweenTransactions);
-    }
-
-    // todo: fix: company shouldnt have the ability to set maxTransferFee to zero and block all transactions
-    function setMaxTransferFee(uint mtf) external onlyOwner {
-        require(mtf > 0, "Can't to set maxTransferFee to zero");
-        maxTransferFee = mtf;
     }
 
     function _updateTotalFee() internal {
@@ -286,20 +282,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function antiDumpCheck(address from, address to, uint256 amount) internal {
         address pair = DEAD_ADDRESS;
 
-        if(automatedMarketMakerPairs[from])
-            pair = from;
-        else if(automatedMarketMakerPairs[to])
+        // check if the transaction direction is sell token
+        if(automatedMarketMakerPairs[to])
             pair = to;
+//        else if(automatedMarketMakerPairs[from])
+//            pair = from;
 
         if(pair!=DEAD_ADDRESS) {
-            // timelock dex transactions
-
-            // antidump
-            address otherTokenFromPair = getTokenAddressFromPair(pair);
-            // todo: make the direction agnostic. We cannot garantee in the future that the token will always be on position 0. It could be on position 1 too if a user create the pair externally.
-
-//            uint maxTransferAmount = uint256(reserve0).mul(maxTransferFee).div(10 ** decimals()); // never divide first. You lose precision. You should multiply first and then divide. never use only 2 decimals precision, you should use 18 decimals here
-//                        require(amount <= maxTransferAmount, "Max transfer amount limit reached");
+            uint256 volume = getTokenVolumeFromPair(pair);
+            uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
+            require(volume <= maxVolume, "anti dump measure");
         }
     }
 
@@ -321,7 +313,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         } else {
             timeLockCheck(from,to);
             antiDumpCheck(from, to, amount);
-
+            
             uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
                 tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** decimals());
