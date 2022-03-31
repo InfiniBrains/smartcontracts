@@ -202,6 +202,39 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         initialReserves + 50
       );
     });
+
+    describe("anti dump", function () {
+      beforeEach(async function () {
+        await contract.setAntiDump(
+          ethers.utils.parseEther("0.01"),
+          ethers.utils.parseEther("0.2")
+        );
+
+        await contract.setEcosystemFee(ethers.utils.parseEther("0.1"));
+        await contract.setEcoSystemAddress(address3.address);
+      });
+
+      it("should activate anti dump mechanism if threshold is reached", async function () {
+        await contract
+          .connect(address1)
+          .approve(router.address, expandTo18Decimals(1001));
+
+        await router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+            expandTo18Decimals(1001),
+            0,
+            [contract.address, router.WETH()],
+            address1.address,
+            ethers.constants.MaxUint256
+          );
+
+        // 30% (10% from ecoSystemFee + 20% from antiDumpFee)
+        expect(await contract.balanceOf(address3.address)).to.equal(
+          ethers.utils.parseEther("300.3")
+        );
+      });
+    });
   });
 
   it("Automated Market Maker Pair", async function () {
