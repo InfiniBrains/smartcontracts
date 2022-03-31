@@ -846,4 +846,33 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
 
         require(tokenContract.transfer(to, amount), "Fail on transfer");
     }
+
+    
+//    function getTokenAddressFromPair(address pairAddr) internal returns (address){
+//        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
+//        if(pair.token0() == address(this))
+//            return pair.token1();
+//        else if(pair.token1() == address(this))
+//            return pair.token0();
+//        revert("not a pair");
+//    }
+
+    function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
+        address pair = DEAD_ADDRESS;
+
+        if(automatedMarketMakerPairs[to])
+            pair = to;
+//        else if(automatedMarketMakerPairs[from])
+//            pair = from;
+
+        if(pair!=DEAD_ADDRESS) {
+            uint256 volume = getTokenVolumeFromPair(pair);
+            if (volume > 0) {
+                uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
+                if (amount >= maxVolume)
+                    return antiDumpFee;
+            }
+        }
+        return 0;
+    }
 }

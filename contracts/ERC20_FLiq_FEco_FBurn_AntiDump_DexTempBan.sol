@@ -15,21 +15,20 @@ import "./TimeLockDexTransactions.sol";
 
 /**
 * Features:
-*   Fee de liquidez pode ir para todos ou para a empresa (configurável pela empresa)
-*   Fee de ecossistema da empresa(configurável pela empresa)
-*   Fee de burn. (configurável pela empresa até certo limite)
-*   Fees totais limitados a 10%
-*   Upgradeable para próximo token
-*   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
-*   Time lock dex transactions
-*   Dex Pair baseado em BUSD - Nao eh possivel
-*   Impedir que as pessoas criem pares sem autorizacao da empresa.
+*   Liquidity fee can go to all company. (Company configurable)
+*   Enterprise ecosystem fee. (Company configurable)
+*   Burn rate. (Company configurable up to a certain limit)
+*   Total fees capped at 20%.
+*   Upgradable to next token.
+*   Dex volume based anti-whale fees. (Configurable to a certain extent by the company)
+*   Time lock dex transactions.
+*   Dex Pair based on BUSD. (Not possible)
+*   Prevent people from creating peers without company authorization.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
     using SafeMath for uint256;
     using Address for address;
 
-    // @dev dead address
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
@@ -89,10 +88,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         _mint(owner(), totalSupply);
         
-        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
-        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // pancakeswap factory address
+        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); 
 
-        // Create a uniswap pair for this new token
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
 
@@ -188,13 +186,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     function _swapAndLiquify(uint256 amount) private {
         uint256 half = amount.div(2);
-        uint256 otherHalf = amount.sub(half); // token
+        uint256 otherHalf = amount.sub(half); 
 
         uint256 initialAmount = address(this).balance;
 
         _swapTokensForBNB(half);
 
-        uint256 newAmount = address(this).balance.sub(initialAmount); // bnb
+        uint256 newAmount = address(this).balance.sub(initialAmount); 
 
         _addLiquidity(otherHalf, newAmount);
 
@@ -235,10 +233,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     modifier _checkIfPairIsAuthorized(address from, address to) {
-        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
         if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
             try IUniswapV2Pair(from).symbol() returns (string memory _value) {
-                if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+                if(compareStrings(_value, "Cake-LP")) 
                     revert("pair not allowed");
             }
             catch {}
@@ -253,14 +250,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _;
     }
 
-//    function getTokenAddressFromPair(address pairAddr) internal returns (address){
-//        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
-//        if(pair.token0() == address(this))
-//            return pair.token1();
-//        else if(pair.token1() == address(this))
-//            return pair.token0();
-//        revert("not a pair");
-//    }
 
     function getTokenVolumeFromPair(address pairAddr) internal returns (uint256){
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
@@ -274,11 +263,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function timeLockCheck(address from, address to) internal {
-        // timelock dex transactions
-        if(automatedMarketMakerPairs[to]) { // selling tokens
+        if(automatedMarketMakerPairs[to]) { 
             require(canOperate(from), "the sender cannot operate yet");
             lockToOperate(from);
-        } else if(automatedMarketMakerPairs[from]) { // buying tokens
+        } else if(automatedMarketMakerPairs[from]) {
             require(canOperate(to), "the recipient cannot sell yet");
             lockToOperate(to);
         }
@@ -298,11 +286,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
         address pair = DEAD_ADDRESS;
 
-        // check if the transaction direction is sell token
         if(automatedMarketMakerPairs[to])
             pair = to;
-//        else if(automatedMarketMakerPairs[from])
-//            pair = from;
 
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
@@ -332,30 +317,24 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             super._transfer(from, to, amount);
         } else {
             timeLockCheck(from,to);
-            // the extra fee goes to the ecosystem
             uint256 extraFee = antiDumpCheck(from, to, amount);
             uint256 tokenToEcoSystem=0;
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
 
-            // only burn must be applied on normal trnasfers. All others should be appliped only on dex
             if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]){
-                // dex transfers should have this fee
                 if (ecoSystemFee > 0) {
                     tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
                 }
 
-                // todo: check if we are taking fee only on the dexPair
-                // dex transfers should have this fee
                 if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair. make it work to other pairs
-                }
+                    _swapAndLiquify(tokensToLiquidity); 
+                    }
             }
 
-            // all transfers should have burn fee
             if (burnFee > 0) {
                 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
