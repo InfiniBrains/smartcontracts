@@ -79,7 +79,6 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     
         await contract.setBurnFee(0);
         await contract.setEcosystemFee(0);
-        await contract.setMaxTransferFee(3);
         await contract.setLiquidityFee(0);
     
         await contract
@@ -96,7 +95,6 @@ describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         beforeEach(async function () {
             await contract.setBurnFee(0);
             await contract.setEcosystemFee(0);
-            await contract.setMaxTransferFee(3);
             await contract.setLiquidityFee(0);
     
             await contract
