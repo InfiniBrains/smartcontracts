@@ -51,7 +51,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public constant MAXFEE = 10 ** 17; // 10%
 
     // @dev the BUSD address
-    address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
+    address public constant _BUSD = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
