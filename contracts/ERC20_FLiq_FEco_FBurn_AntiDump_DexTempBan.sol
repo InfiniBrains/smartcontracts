@@ -96,8 +96,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
 
         // Create a uniswap pair for this new token
-        // dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
-        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), _BUSD); // busd address
+        dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
+        // dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), _BUSD); // busd address
         _setAutomatedMarketMakerPair(dexPair, true);
 
         isExcludedFromFees[owner()] = true;
@@ -190,16 +190,17 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uint256 half = amount.div(2);
         uint256 otherHalf = amount.sub(half);
 
-        // uint256 initialAmount = address(this).balance;
-        uint256 initialAmount = IERC20(_BUSD).balanceOf(address(this));
+        uint256 initialAmount = address(this).balance;
+        // uint256 initialAmount = IERC20(_BUSD).balanceOf(address(this));
 
-        _swapTokensForBUSD(half);
+        _swapTokensForBNB(half);
+        // _swapTokensForBUSD(half);
 
-//        uint256 newAmount = address(this).balance.sub(initialAmount);
-        uint256 newAmount = IERC20(_BUSD).balanceOf(address(this)).sub(initialAmount);
+        uint256 newAmount = address(this).balance.sub(initialAmount);
+        // uint256 newAmount = IERC20(_BUSD).balanceOf(address(this)).sub(initialAmount);
 
-        // _addLiquidity(otherHalf, newAmount);
-        _addLiquidityBUSD(otherHalf, newAmount);
+        _addLiquidity(otherHalf, newAmount);
+        // _addLiquidityBUSD(otherHalf, newAmount);
 
         emit SwapAndLiquify(half, newAmount, otherHalf);
     }
@@ -215,7 +216,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             tokenAmount,
             0,
             path,
-            address(this),
+            address(this), // TODO: THIS DOESNT WORK BECAUSE TO IS ONE OF THE TOKENS ON PAIR
             block.timestamp.add(300)
         );
     }
@@ -223,11 +224,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _swapTokensForBNB(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = dexRouter.WETH(); // TODO: test if this is something viable. the oldest value was "path[1] = dexRouter.WETH();"
+        path[1] = dexRouter.WETH();
 
         _approve(address(this), address(dexRouter), tokenAmount);
 
-        // todo: change this to swapExactTokensForTokensSupportingFeeOnTransferTokens bc we are using busd as 2nd element of the pair
         dexRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokenAmount,
             0,
@@ -344,9 +344,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
-            uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-            if (amount > maxVolume)
-                return antiDumpFee;
+            if (volume > 0) {
+                uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
+                if (amount > maxVolume)
+                    return antiDumpFee;
+            }
         }
         return 0;
     }
