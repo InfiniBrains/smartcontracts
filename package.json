@@ -50,7 +50,7 @@
     "coverage:partial": "npm run coverage:generate && concurrently \"npm run start:coverage:server\" \"npx open-cli http://localhost:8000/contracts/UltimateERC20.sol.html\"",
     "compile": "hardhat compile",
     "fork": "hardhat node",
-    "deploy:tolsta:local": "hardhat run scripts/deploy.ts --network local",
-    "deploy:tolsta:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
+    "deploy:local": "hardhat run scripts/deploy.ts --network local",
+    "deploy:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
   }
 }

@@ -25,10 +25,11 @@ import "./TimeLockDexTransactions.sol";
 *   Dex Pair based on BUSD. (Not possible)
 *   Prevent people from creating peers without company authorization.
 */
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
+contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockDexTransactions {
     using SafeMath for uint256;
     using Address for address;
 
+    // @dev dead address
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
@@ -87,9 +88,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         liquidityAddress = DEAD_ADDRESS;
 
         _mint(owner(), totalSupply);
-        
-        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); 
+
+        // Create a uniswap pair for this new token
+//        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
+        dexRouter = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1); // testnet
+//        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // mainnet
+        uniswapFactoryAddress = address(0x6725F303b657a9451d8BA641348b6761A6CC7a17); // testnet
 
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
@@ -186,13 +190,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     function _swapAndLiquify(uint256 amount) private {
         uint256 half = amount.div(2);
-        uint256 otherHalf = amount.sub(half); 
+        uint256 otherHalf = amount.sub(half);  // token
 
         uint256 initialAmount = address(this).balance;
 
         _swapTokensForBNB(half);
 
-        uint256 newAmount = address(this).balance.sub(initialAmount); 
+        uint256 newAmount = address(this).balance.sub(initialAmount);  // bnb
 
         _addLiquidity(otherHalf, newAmount);
 
@@ -233,6 +237,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     modifier _checkIfPairIsAuthorized(address from, address to) {
+        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
         if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
             try IUniswapV2Pair(from).symbol() returns (string memory _value) {
                 if(compareStrings(_value, "Cake-LP")) 
@@ -263,10 +268,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function timeLockCheck(address from, address to) internal {
-        if(automatedMarketMakerPairs[to]) { 
+        if(automatedMarketMakerPairs[to]) {  // selling tokens
             require(canOperate(from), "the sender cannot operate yet");
             lockToOperate(from);
-        } else if(automatedMarketMakerPairs[from]) {
+        } else if(automatedMarketMakerPairs[from]) { // buying tokens
             require(canOperate(to), "the recipient cannot sell yet");
             lockToOperate(to);
         }
@@ -286,6 +291,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
         address pair = DEAD_ADDRESS;
 
+        // check if the transaction direction is sell token
         if(automatedMarketMakerPairs[to])
             pair = to;
 
@@ -316,6 +322,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if (excludedAccount) {
             super._transfer(from, to, amount);
         } else {
+            // timelock dex transactions
             timeLockCheck(from,to);
             uint256 extraFee = antiDumpCheck(from, to, amount);
             uint256 tokenToEcoSystem=0;

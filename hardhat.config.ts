@@ -37,7 +37,6 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // Go to https://hardhat.org/config/ to learn more
 function getForkingSettings(): HardhatNetworkUserConfig {
   const url = process.env.CHAINSTACK_PROVIDER;
-  console.log("forking");
 
   let ret: HardhatNetworkUserConfig = {};
 
@@ -53,7 +52,6 @@ function getForkingSettings(): HardhatNetworkUserConfig {
     );
     ret = { accounts: { mnemonic } };
   } else {
-    console.log("URL set");
     ret = {
       accounts: { mnemonic },
       forking: { url },
