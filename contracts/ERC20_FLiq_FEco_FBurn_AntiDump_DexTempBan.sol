@@ -22,6 +22,7 @@ import "./TimeLockDexTransactions.sol";
 *   Upgradeable para próximo token
 *   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
 *   Time lock dex transactions
+*   Dex Pair baseado em BUSD
 *   Impedir que as pessoas criem pares sem autorizacao da empresa.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
@@ -50,7 +51,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public constant MAXFEE = 10 ** 17; // 10%
 
     // @dev the BUSD address
-    address public constant _BUSD = address(0x4Fabb145d64652a948d72533023f6E7A623C7C53);
+    address public constant _BUSD = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -65,7 +66,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public antiDumpThreshold = 10**16; // 1%
 
     // @dev antidump mechanics
-    uint256 public constant MAX_ANTI_DUMP_THRESHOLD = 10**16; // 1%
+    uint256 public antiDumpFee = 2 * 10**17; // 20%
+
+    // @dev antidump mechanics
+    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**16; // 1%
+
+    // @dev antidump mechanics
+    uint256 public constant ANTI_DUMP_FEE_LIMIT = 2 * 10**17; // 20%
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -309,7 +316,18 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         }
     }
 
-    function antiDumpCheck(address from, address to, uint256 amount) internal {
+    function setAntiDump(uint256 newThreshold, uint256 newFee) external onlyOwner {
+        require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "new threshold is not acceptable");
+        require(newFee<=ANTI_DUMP_FEE_LIMIT, "new fee is not acceptable");
+
+        antiDumpThreshold = newThreshold;
+        antiDumpFee = newFee;
+
+        emit SetAntiDump(newThreshold, newFee);
+    }
+    event SetAntiDump(uint256 newThreshold, uint256 newfee);
+
+    function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
         address pair = DEAD_ADDRESS;
 
         // check if the transaction direction is sell token
@@ -321,8 +339,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
             uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-            require(amount <= maxVolume, "anti dump measure");
+            if (amount > maxVolume)
+                return antiDumpFee;
         }
+        return 0;
     }
 
     function _transfer(
@@ -342,11 +362,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             super._transfer(from, to, amount);
         } else {
             timeLockCheck(from,to);
-            antiDumpCheck(from, to, amount);
+            // the extra fee goes to the ecosystem
+            uint256 extraFee = antiDumpCheck(from, to, amount);
 
             uint256 tokenToEcoSystem=0;
             if (ecoSystemFee > 0) {
-                tokenToEcoSystem = amount.mul(ecoSystemFee).div(10 ** decimals());
+                tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                 super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
             }
 
