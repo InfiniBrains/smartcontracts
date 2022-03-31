@@ -33,19 +33,19 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // @dev the fee the ecosystem takes. value uses decimals() as multiplicative factor
-    uint256 public ecoSystemFee;
+    uint256 public ecoSystemFee = 0;
 
     // @dev which wallet will receive the ecosystem fee
     address public ecoSystemAddress;
 
     // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 public liquidityFee;
+    uint256 public liquidityFee = 65 * 10**15; // 6.5%
 
     // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
     address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 public burnFee;
+    uint256 public burnFee = 1 * 10**16; // 1%
 
     // @dev the total max value of the fee
     uint256 public constant MAXFEE = 2 * 10**17; // 20%
@@ -66,7 +66,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public antiDumpFee = 2 * 10**17; // 20%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**17; // 10%
+    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**16; // 1%
 
     // @dev antidump mechanics
     uint256 public constant ANTI_DUMP_FEE_LIMIT = 2 * 10**17; // 20%
@@ -90,22 +90,25 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _mint(owner(), totalSupply);
         
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // bsc mainnet router
-        uniswapFactoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // pancakeswap factory address
+        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // pancakeswap factory address
 
         // Create a uniswap pair for this new token
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
 
+        _updateTotalFee();
+
         isExcludedFromFees[owner()] = true;
         isExcludedFromFees[address(this)] = true;
         isExcludedFromFees[DEAD_ADDRESS] = true;
+
         emit ExcludeFromFees(owner(), true);
         emit ExcludeFromFees(address(this), true);
         emit ExcludeFromFees(DEAD_ADDRESS, true);
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
-        require(pair != dexPair, "cannot be removed");
+        require(pair != dexPair, "default pair cannot be changed");
         _setAutomatedMarketMakerPair(pair, value);
     }
 
@@ -170,7 +173,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
-        // todo: check the limit the owner can set
+        require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "The company cannot set abusive threshold");
         antiDumpThreshold = newThreshold;
         emit AntiDumpThresholdUpdated(newThreshold);
     }
@@ -185,13 +188,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
     function _swapAndLiquify(uint256 amount) private {
         uint256 half = amount.div(2);
-        uint256 otherHalf = amount.sub(half);
+        uint256 otherHalf = amount.sub(half); // token
 
         uint256 initialAmount = address(this).balance;
 
         _swapTokensForBNB(half);
 
-        uint256 newAmount = address(this).balance.sub(initialAmount);
+        uint256 newAmount = address(this).balance.sub(initialAmount); // bnb
 
         _addLiquidity(otherHalf, newAmount);
 
@@ -250,14 +253,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         _;
     }
 
-    function getTokenAddressFromPair(address pairAddr) internal returns (address){
-        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
-        if(pair.token0() == address(this))
-            return pair.token1();
-        else if(pair.token1() == address(this))
-            return pair.token0();
-        revert("not a pair");
-    }
+//    function getTokenAddressFromPair(address pairAddr) internal returns (address){
+//        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
+//        if(pair.token0() == address(this))
+//            return pair.token1();
+//        else if(pair.token1() == address(this))
+//            return pair.token0();
+//        revert("not a pair");
+//    }
 
     function getTokenVolumeFromPair(address pairAddr) internal returns (uint256){
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
@@ -305,7 +308,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             uint256 volume = getTokenVolumeFromPair(pair);
             if (volume > 0) {
                 uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-                if (amount > maxVolume)
+                if (amount >= maxVolume)
                     return antiDumpFee;
             }
         }
@@ -317,7 +320,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         address to,
         uint256 amount
     ) internal override
-    _checkIfPairIsAuthorized(from, to) // todo: test this better
+    _checkIfPairIsAuthorized(from, to)
     {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
@@ -343,6 +346,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
                 }
 
+                // todo: check if we are taking fee only on the dexPair
                 // dex transfers should have this fee
                 if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
@@ -357,7 +361,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
-            // todo: test this!
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
         }
