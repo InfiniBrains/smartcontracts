@@ -15,14 +15,14 @@ import "./TimeLockDexTransactions.sol";
 
 /**
 * Features:
-*   Fee de liquidez pode ir para todos ou o user ou a empresa(configurável pela empresa)
+*   Fee de liquidez pode ir para todos ou para a empresa (configurável pela empresa)
 *   Fee de ecossistema da empresa(configurável pela empresa)
 *   Fee de burn. (configurável pela empresa até certo limite)
 *   Fees totais limitados a 10%
 *   Upgradeable para próximo token
 *   Anti whale fees baseado em volume da dex. Configurável até certo limite pela empresa.
 *   Time lock dex transactions
-*   Dex Pair baseado em BUSD
+*   Dex Pair baseado em BUSD - Nao eh possivel
 *   Impedir que as pessoas criem pares sem autorizacao da empresa.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable, Ownable, TimeLockDexTransactions {
@@ -48,10 +48,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public burnFee;
 
     // @dev the total max value of the fee
-    uint256 public constant MAXFEE = 10 ** 17; // 10%
-
-    // @dev the BUSD address
-    address public constant _BUSD = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+    uint256 public constant MAXFEE = 2 * 10**17; // 20%
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -63,13 +60,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     uint256 public totalFees = 0;
 
     // @dev antidump mechanics
-    uint256 public antiDumpThreshold = 10**16; // 1%
+    uint256 public antiDumpThreshold = 5 * 10**16; // 5%
 
     // @dev antidump mechanics
     uint256 public antiDumpFee = 2 * 10**17; // 20%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**16; // 1%
+    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**17; // 10%
 
     // @dev antidump mechanics
     uint256 public constant ANTI_DUMP_FEE_LIMIT = 2 * 10**17; // 20%
@@ -97,7 +94,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         // Create a uniswap pair for this new token
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
-        // dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), _BUSD); // busd address
         _setAutomatedMarketMakerPair(dexPair, true);
 
         isExcludedFromFees[owner()] = true;
@@ -174,6 +170,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     }
 
     function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
+        // todo: check the limit the owner can set
         antiDumpThreshold = newThreshold;
         emit AntiDumpThresholdUpdated(newThreshold);
     }
@@ -191,12 +188,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         uint256 otherHalf = amount.sub(half);
 
         uint256 initialAmount = address(this).balance;
-        // uint256 initialAmount = IERC20(_BUSD).balanceOf(address(this));
 
         _swapTokensForBNB(half);
 
         uint256 newAmount = address(this).balance.sub(initialAmount);
-        // uint256 newAmount = IERC20(_BUSD).balanceOf(address(this)).sub(initialAmount);
 
         _addLiquidity(otherHalf, newAmount);
 
@@ -222,7 +217,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function _addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
         _approve(address(this), address(dexRouter), tokenAmount);
 
-        // TODO: make it work with BUSD use addLiquidity https://docs.uniswap.org/protocol/V2/reference/smart-contracts/router-02#addliquidity
         dexRouter.addLiquidityETH{ value: bnbAmount }(
             address(this),
             tokenAmount,
@@ -301,7 +295,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
         address pair = DEAD_ADDRESS;
 
-
         // check if the transaction direction is sell token
         if(automatedMarketMakerPairs[to])
             pair = to;
@@ -338,21 +331,27 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             timeLockCheck(from,to);
             // the extra fee goes to the ecosystem
             uint256 extraFee = antiDumpCheck(from, to, amount);
-
             uint256 tokenToEcoSystem=0;
-            if (ecoSystemFee > 0) {
-                tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
-                super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
-            }
-
             uint256 tokensToLiquidity=0;
-            if (liquidityFee > 0) {
-                tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
-                super._transfer(from, address(this), tokensToLiquidity);
-                _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair. make it work to other pairs
+            uint256 tokensToBurn=0;
+
+            // only burn must be applied on normal trnasfers. All others should be appliped only on dex
+            if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]){
+                // dex transfers should have this fee
+                if (ecoSystemFee > 0) {
+                    tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
+                    super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
+                }
+
+                // dex transfers should have this fee
+                if (liquidityFee > 0) {
+                    tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
+                    super._transfer(from, address(this), tokensToLiquidity);
+                    _swapAndLiquify(tokensToLiquidity); // TODO: this only works on the default pair. make it work to other pairs
+                }
             }
 
-            uint256 tokensToBurn=0;
+            // all transfers should have burn fee
             if (burnFee > 0) {
                 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
@@ -380,14 +379,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
     event AntiDumpThresholdUpdated(uint256 indexed threshold);
     event LiquidityStarted(address indexed routerAddress, address indexed pairAddress);
 
-
-    // todo: make nonReentrant
     function withdraw() onlyOwner public {
         uint256 balance = address(this).balance;
         Address.sendValue(payable(msg.sender), balance);
     }
 
-    // todo: make nonReentrant
     /**
      * @dev Withdraw any ERC20 token from this contract
      * @param tokenAddress ERC20 token to withdraw
