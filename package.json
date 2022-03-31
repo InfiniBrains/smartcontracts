@@ -51,6 +51,7 @@
     "compile": "hardhat compile",
     "fork": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network local",
-    "deploy:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest"
+    "deploy:bsc:testnet": "hardhat run scripts/deploy.ts --network bsctest",
+    "deploy:bsc:mainnet": "hardhat run scripts/deploy.ts --network bsc"
   }
 }
