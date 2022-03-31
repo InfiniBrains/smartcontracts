@@ -173,6 +173,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit BurnFeeUpdated(newFee);
     }
 
+    function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
+        antiDumpThreshold = newThreshold;
+        emit AntiDumpThresholdUpdated(newThreshold);
+    }
+
     function setLockTime(uint timeBetweenTransactions) external onlyOwner {
         _setLockTime(timeBetweenTransactions);
     }
