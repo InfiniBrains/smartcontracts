@@ -10,6 +10,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, utils } from "ethers";
 import { bigNumberToFloat, expandTo9Decimals, expandTo18Decimals } from "./shared/utilities";
 import { abi } from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
+import { abi as factoryAbi } from "@uniswap/v2-periphery/build/IUniswapV2Factory.json";
+import { abi as pairAbi } from "@uniswap/v2-periphery/build/IUniswapV2Pair.json";
 import busdAbi from "./shared/busd.json";
 
 // ATTENTION! do not commit the line below!! You should put only for your tests only!
@@ -18,10 +20,15 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
 
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
     const BUSD_ADDRESS = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
+    const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+    let wethAddress = "";
     let contract: ERC20FLiqFEcoFBurnAntiDumpDexTempBan;
+    let router: Contract;
+    let factory: Contract;
     let busdContract: Contract;
     let busdHotWalletAddress: string = '0x8894e0a0c962cb723c1976a4421c95949be2d4e3';
     let busdHotWallet: SignerWithAddress;
+    let pairContract: Contract;
     let owner: SignerWithAddress;
     let address1: SignerWithAddress;
     let address2: SignerWithAddress;
@@ -37,9 +44,30 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
           method: "hardhat_impersonateAccount",
           params: [busdHotWalletAddress],
         });
-        busdHotWallet = await ethers.getSigner(busdHotWalletAddress);
 
+        //BUSD contract
+        busdHotWallet = await ethers.getSigner(busdHotWalletAddress);
         busdContract = new ethers.Contract(BUSD_ADDRESS, busdAbi, busdHotWallet);
+
+        let bal = await ethers.provider.getBalance(owner.address);
+        console.log(`Owner bnb balance before ${owner.address} - ${bal}`); //10 thousand BNB
+        
+
+        //ROUTER CONTRACT
+        router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
+        wethAddress = await router.WETH();
+
+        //FACTORY CONTRACT
+        let factoryAddress = await router.factory();
+        factory = new ethers.Contract(factoryAddress, factoryAbi, owner);
+
+        //BNB FUNDING
+        await busdHotWallet.sendTransaction({
+            to: owner.address,
+            value: expandTo18Decimals(100)
+        });
+        bal = await ethers.provider.getBalance(owner.address);
+        console.log(`Owner bnb balance after - ${bal}`);
     });
 
 
@@ -53,6 +81,12 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expandTo18Decimals(1000000000)
     );
     contract = await contract.deployed();
+    let pairAddress = await factory.getPair(contract.address, wethAddress)
+    //PAIR CONTRACT
+    pairContract = new ethers.Contract(pairAddress, pairAbi, owner);
+
+    //pair address should not be zero
+    console.log("pairContract", pairContract.address);
   });
 
   it("Should be constructed properly", async function () {
@@ -117,25 +151,6 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
   });
 
   describe("after liquidity is added", function () {
-    const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-    //   let BUSD_ADDRESS = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
-    let router: Contract;
-    //   let busd: Contract;
-    //   let whale: SignerWithAddress;
-
-    before(async function () {
-      router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
-      // busd = new ethers.Contract(BUSD_ADDRESS, busdABI, owner);
-
-      // await network.provider.request({
-      //   method: "hardhat_impersonateAccount",
-      //   params: ["0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa"],
-      // });
-
-      // whale = await ethers.getSigner(
-      //   "0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa"
-      // );
-    });
 
     beforeEach(async function () {
       await contract.setBurnFee(0);
@@ -159,6 +174,8 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         ethers.constants.MaxUint256,
         { value: bnbAmount }
       );
+
+      //let [reserve0, reserve1] = 
 
       // const busdAmount = expandTo18Decimals(100000);
 
@@ -330,6 +347,10 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         const balanceBusdOwner = await busdContract.balanceOf(owner.address);
         console.log("balanceBusdOwner", balanceBusdOwner);
         expect(balanceBusdOwner).to.equal(expandTo18Decimals(1000000));
+    });
+
+    it("should transfer liquidity tokens to designated liquidity address", async function () {
+        //how to get liquidity token address?
     });
 
     // procurar como adicionar BUSD para cá

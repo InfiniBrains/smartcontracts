@@ -173,11 +173,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         emit BurnFeeUpdated(newFee);
     }
 
-    function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
-        antiDumpThreshold = newThreshold;
-        emit AntiDumpThresholdUpdated(newThreshold);
-    }
-
     function setLockTime(uint timeBetweenTransactions) external onlyOwner {
         _setLockTime(timeBetweenTransactions);
     }
@@ -194,31 +189,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
         // uint256 initialAmount = IERC20(_BUSD).balanceOf(address(this));
 
         _swapTokensForBNB(half);
-        // _swapTokensForBUSD(half);
 
         uint256 newAmount = address(this).balance.sub(initialAmount);
         // uint256 newAmount = IERC20(_BUSD).balanceOf(address(this)).sub(initialAmount);
 
         _addLiquidity(otherHalf, newAmount);
-        // _addLiquidityBUSD(otherHalf, newAmount);
 
         emit SwapAndLiquify(half, newAmount, otherHalf);
-    }
-
-    function _swapTokensForBUSD(uint256 tokenAmount) private {
-        address[] memory path = new address[](2);
-        path[0] = address(this);
-        path[1] = _BUSD;
-
-        _approve(address(this), address(dexRouter), tokenAmount);
-
-        dexRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            tokenAmount,
-            0,
-            path,
-            address(this), // TODO: THIS DOESNT WORK BECAUSE TO IS ONE OF THE TOKENS ON PAIR
-            block.timestamp.add(300)
-        );
     }
 
     function _swapTokensForBNB(uint256 tokenAmount) private {
@@ -233,22 +210,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
             0,
             path,
             address(this),
-            block.timestamp.add(300)
-        );
-    }
-
-    function _addLiquidityBUSD(uint256 tokenAmount, uint256 busdAmount) private {
-        _approve(address(this), address(dexRouter), tokenAmount);
-
-        // https://docs.uniswap.org/protocol/V2/reference/smart-contracts/router-02#addliquidity
-        dexRouter.addLiquidity(
-            address(this),
-            _BUSD,
-            tokenAmount,
-            busdAmount,
-            0,
-            0,
-            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
             block.timestamp.add(300)
         );
     }
