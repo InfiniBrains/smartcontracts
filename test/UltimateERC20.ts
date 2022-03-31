@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-/*
+
 import { expect } from "chai";
 import { ethers, network, waffle } from "hardhat";
 import { UltimateERC20, UltimateERC20__factory } from "../typechain";
@@ -8,7 +8,7 @@ import { Contract, utils } from "ethers";
 import { expandTo9Decimals } from "./shared/utilities";
 import { abi } from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
-describe.only("UltimateCoin", function () {
+describe("UltimateCoin", function () {
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
   let contract: UltimateERC20;
   let owner: SignerWithAddress;
@@ -244,29 +244,29 @@ describe.only("UltimateCoin", function () {
         ); // liquidity is the same as initial
       });
 
-      it("Should not add liquidity to LP if swapAndLiquify is not enabled", async function () {
-        await contract.enableSwapAndLiquify();
-
-        await contract
-          .connect(address1)
-          .transfer(address2.address, expandTo9Decimals("500"));
-
-        expect(await contract.balanceOf(contract.address)).to.equal(
-          expandTo9Decimals("50")
-        );
-
-        await contract
-          .connect(address2)
-          .transfer(address3.address, expandTo9Decimals("100"));
-
-        expect(await contract.balanceOf(contract.address)).to.equal(
-          expandTo9Decimals("60")
-        );
-
-        expect(await contract.balanceOf(await contract.defaultPair())).to.equal(
-          expandTo9Decimals("100000")
-        ); // liquidity is the same as initial
-      });
+      // it("Should not add liquidity to LP if swapAndLiquify is not enabled", async function () {
+      //   await contract.enableSwapAndLiquify();
+      //
+      //   await contract
+      //     .connect(address1)
+      //     .transfer(address2.address, expandTo9Decimals("500"));
+      //
+      //   expect(await contract.balanceOf(contract.address)).to.equal(
+      //     expandTo9Decimals("50")
+      //   );
+      //
+      //   await contract
+      //     .connect(address2)
+      //     .transfer(address3.address, expandTo9Decimals("100"));
+      //
+      //   expect(await contract.balanceOf(contract.address)).to.equal(
+      //     expandTo9Decimals("60")
+      //   );
+      //
+      //   expect(await contract.balanceOf(await contract.defaultPair())).to.equal(
+      //     expandTo9Decimals("100000")
+      //   ); // liquidity is the same as initial
+      // });
     });
 
     describe("Reflect fee", async function () {
@@ -278,7 +278,7 @@ describe.only("UltimateCoin", function () {
           .transfer(address1.address, expandTo9Decimals("500"));
       });
 
-      it.only("Should charge reflect fee", async function () {
+      it("Should charge reflect fee", async function () {
         expect(await contract.balanceOf(owner.address)).to.equal(
           expandTo9Decimals("999999499")
         ); // should not charge on owner transfer
@@ -312,4 +312,3 @@ describe.only("UltimateCoin", function () {
   //   await contract.setTaxFeePercent(0, 0);
   // });
 });
-*/
