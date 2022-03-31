@@ -338,9 +338,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, Pausable,
 
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
-            uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-            if (amount > maxVolume)
-                return antiDumpFee;
+            if (volume > 0) {
+                uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
+                if (amount > maxVolume)
+                    return antiDumpFee;
+            }
         }
         return 0;
     }
