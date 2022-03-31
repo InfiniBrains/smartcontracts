@@ -49,7 +49,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     expect(await contract.name()).to.equal("Test");
     expect(await contract.symbol()).to.equal("ERT");
     expect(await contract.totalSupply()).to.equal(
-      utils.parseUnits("1000000000", 0).toString()
+      expandTo18Decimals(1000000000)
     );
     expect(await contract.decimals()).to.equal(18);
     expect(await contract.balanceOf(owner.address)).to.equal(
@@ -233,6 +233,76 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         expect(await contract.balanceOf(address3.address)).to.equal(
           ethers.utils.parseEther("300.3")
         );
+      });
+    });
+
+    describe("timelock dex", async function () {
+      const oneDay = 24 * 60 * 60;
+
+      beforeEach(async function () {
+        await contract.setLockTime(oneDay);
+
+        await contract
+          .connect(address1)
+          .approve(router.address, expandTo18Decimals(1000));
+      });
+
+      it("should revert if user tries to transact to dex before timelock expires", async function () {
+        await router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+            expandTo18Decimals(500),
+            0,
+            [contract.address, router.WETH()],
+            address1.address,
+            ethers.constants.MaxUint256
+          );
+
+        await expect(
+          router
+            .connect(address1)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              expandTo18Decimals(500),
+              0,
+              [contract.address, router.WETH()],
+              address1.address,
+              ethers.constants.MaxUint256
+            )
+        ).to.be.revertedWith("TransferHelper: TRANSFER_FROM_FAILED");
+      });
+
+      it("should pass if user tries to transact to dex after timelock expires", async function () {
+        await router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+            expandTo18Decimals(500),
+            0,
+            [contract.address, router.WETH()],
+            address1.address,
+            ethers.constants.MaxUint256
+          );
+
+        // jump one day in time
+        await ethers.provider.send("evm_increaseTime", [oneDay]);
+        await ethers.provider.send("evm_mine", []);
+
+        await expect(
+          router
+            .connect(address1)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              expandTo18Decimals(500),
+              0,
+              [contract.address, router.WETH()],
+              address1.address,
+              ethers.constants.MaxUint256
+            )
+        )
+          .to.emit(contract, "Transfer")
+          .withArgs(
+            address1.address,
+            await contract.dexPair(),
+            expandTo18Decimals(500)
+          );
       });
     });
   });
