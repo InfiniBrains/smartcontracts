@@ -88,10 +88,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
         _mint(owner(), totalSupply);
 
         // Create a uniswap pair for this new token
-//        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
-        dexRouter = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1); // testnet
-//        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // mainnet
-        uniswapFactoryAddress = address(0x6725F303b657a9451d8BA641348b6761A6CC7a17); // testnet
+        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
+//        dexRouter = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1); // testnet
+        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // mainnet
+//        uniswapFactoryAddress = address(0x6725F303b657a9451d8BA641348b6761A6CC7a17); // testnet
 
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
@@ -327,7 +327,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
 
-            if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]){
+            if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]) {
                 if (ecoSystemFee > 0) {
                     tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
@@ -337,7 +337,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
                     _swapAndLiquify(tokensToLiquidity); 
-                    }
+                }
             }
 
             if (burnFee > 0) {

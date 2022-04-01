@@ -7,12 +7,13 @@ import {
   ERC20FLiqFEcoFBurnAntiDumpDexTempBan__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Contract, utils } from "ethers";
+import {Contract, utils, Wallet} from "ethers";
 import { bigNumberToFloat, expandTo9Decimals, expandTo18Decimals } from "./shared/utilities";
 import { abi } from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 import { abi as factoryAbi } from "@uniswap/v2-periphery/build/IUniswapV2Factory.json";
 import { abi as pairAbi } from "@uniswap/v2-periphery/build/IUniswapV2Pair.json";
 import busdAbi from "./shared/busd.json";
+import {parseEther} from "ethers/lib/utils";
 
 // ATTENTION! do not commit the line below!! You should put only for your tests only!
 //describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
@@ -50,8 +51,6 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         busdContract = new ethers.Contract(BUSD_ADDRESS, busdAbi, busdHotWallet);
 
         let bal = await ethers.provider.getBalance(owner.address);
-        console.log(`Owner bnb balance before ${owner.address} - ${bal}`); //10 thousand BNB
-        
 
         //ROUTER CONTRACT
         router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
@@ -67,7 +66,6 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
             value: expandTo18Decimals(100)
         });
         bal = await ethers.provider.getBalance(owner.address);
-        console.log(`Owner bnb balance after - ${bal}`);
     });
 
 
@@ -84,9 +82,6 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     let pairAddress = await factory.getPair(contract.address, wethAddress)
     //PAIR CONTRACT
     pairContract = new ethers.Contract(pairAddress, pairAbi, owner);
-
-    //pair address should not be zero
-    console.log("pairContract", pairContract.address);
   });
 
   it("Should be constructed properly", async function () {
@@ -206,29 +201,61 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       await contract.transfer(address1.address, expandTo18Decimals(10000));
     });
 
-    it("should charge liquidity fee into liquidity pool", async function () {
-      await contract.setLiquidityFee(ethers.utils.parseEther("0.1"));
-
-      const initialReserves = bigNumberToFloat(
-        await contract.balanceOf(await contract.dexPair())
-      );
+    it("liquidityAddress should receive cakes", async function () {
+      await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
+      await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
+      await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.01"));
+      await contract.connect(owner).setLiquidityAddress(owner.address);
 
       await contract
-        .connect(address1)
-        .transfer(address2.address, expandTo18Decimals(500));
+          .connect(address1)
+          .approve(router.address, expandTo18Decimals(1));
 
-      expect(await contract.balanceOf(address2.address)).to.equal(
-        expandTo18Decimals(450)
-      );
+      const initialPairBalance = bigNumberToFloat(await pairContract.balanceOf(await contract.liquidityAddress()));
+      const initialReserves = bigNumberToFloat(await contract.balanceOf(await contract.dexPair()));
 
-      const finalReserves = bigNumberToFloat(
-        await contract.balanceOf(await contract.dexPair())
-      );
+      await router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              expandTo18Decimals(1),
+              0,
+              [contract.address, router.WETH()],
+              address1.address,
+              ethers.constants.MaxUint256
+          );
 
-      expect(finalReserves).to.be.within(
-        initialReserves + 49.9,
-        initialReserves + 50
-      );
+      const finalReserves = bigNumberToFloat(await contract.balanceOf(await contract.dexPair()));
+      const finalPairBalance = bigNumberToFloat(await pairContract.balanceOf(await contract.liquidityAddress()));
+
+      expect(initialPairBalance).lt(finalPairBalance);
+      expect(initialReserves).lt(finalReserves);
+    });
+
+    it("user should receive cakes as cashback", async function () {
+      await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.1"));
+      await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
+      await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
+
+      await contract.connect(address1).approve(router.address, expandTo18Decimals(1));
+
+      const initialReserves = bigNumberToFloat(await pairContract.balanceOf(await contract.dexPair()));
+      const initialCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
+
+      await router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              expandTo18Decimals(1),
+              0,
+              [contract.address, router.WETH()],
+              address1.address,
+              ethers.constants.MaxUint256
+          );
+
+      const finalReserves = bigNumberToFloat(await pairContract.balanceOf(await contract.dexPair()));
+      const finalCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
+
+      expect(initialCakeBalance).lt(finalCakeBalance);
+      expect(initialReserves).lt(finalReserves);
     });
 
     describe("anti dump", function () {
