@@ -6,10 +6,12 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
+
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "./TimeLockDexTransactions.sol";
+import "./TimeLockTransactions.sol";
 
 /**
 * Features:
@@ -23,7 +25,7 @@ import "./TimeLockDexTransactions.sol";
 *   Dex Pair based on BUSD. (Not possible)
 *   Prevent people from creating peers without company authorization.
 */
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTransactions {
+contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions {
     using SafeMath for uint256;
     using Address for address;
 
@@ -225,7 +227,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
             tokenAmount,
             0,
             0,
-            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
+            liquidityAddress == DEAD_ADDRESS ? tx.origin : liquidityAddress, // todo: pass the address here instead of the origin
             block.timestamp.add(300)
         );
     }
@@ -266,13 +268,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
     }
 
     function timeLockCheck(address from, address to) internal {
-        if(automatedMarketMakerPairs[to]) {  // selling tokens
-            require(canOperate(from), "the sender cannot operate yet");
-            lockToOperate(from);
-        } else if(automatedMarketMakerPairs[from]) { // buying tokens
-            require(canOperate(to), "the recipient cannot sell yet");
-            lockToOperate(to);
-        }
+        if(automatedMarketMakerPairs[to])  // selling tokens
+            lockIfCanOperateAndRevertIfNotAllowed(from);
+        else if(automatedMarketMakerPairs[from]) // buying tokens
+            lockIfCanOperateAndRevertIfNotAllowed(to);
     }
 
     function setAntiDump(uint256 newThreshold, uint256 newFee) external onlyOwner {
@@ -336,7 +335,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockDexTran
                 if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity); 
+                    _swapAndLiquify(tokensToLiquidity);
                 }
             }
 

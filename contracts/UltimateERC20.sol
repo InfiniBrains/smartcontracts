@@ -21,11 +21,11 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
-import "./TimeLockDexTransactions.sol";
+import "./TimeLockTransactions.sol";
 
 import "hardhat/console.sol";
 
-contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
+contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions {
     using SafeMath for uint256;
     using Address for address;
 

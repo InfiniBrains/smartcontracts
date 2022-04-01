@@ -231,14 +231,13 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expect(initialReserves).lt(finalReserves);
     });
 
-    it("user should receive cakes as cashback", async function () {
+    it.only("user should receive cakes as cashback", async function () {
       await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.1"));
       await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
       await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
 
       await contract.connect(address1).approve(router.address, expandTo18Decimals(1));
 
-      const initialReserves = bigNumberToFloat(await pairContract.balanceOf(await contract.dexPair()));
       const initialCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
 
       await router
@@ -251,11 +250,9 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
               ethers.constants.MaxUint256
           );
 
-      const finalReserves = bigNumberToFloat(await pairContract.balanceOf(await contract.dexPair()));
       const finalCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
 
       expect(initialCakeBalance).lt(finalCakeBalance);
-      expect(initialReserves).lt(finalReserves);
     });
 
     describe("anti dump", function () {
@@ -372,7 +369,6 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
                 .transfer(owner.address, expandTo18Decimals(1000000));
 
         const balanceBusdOwner = await busdContract.balanceOf(owner.address);
-        console.log("balanceBusdOwner", balanceBusdOwner);
         expect(balanceBusdOwner).to.equal(expandTo18Decimals(1000000));
     });
 
