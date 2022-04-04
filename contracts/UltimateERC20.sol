@@ -94,6 +94,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled;
 
+    bool private rentrancy_lock;
+
+
     uint256 public _maxTxAmount;
     uint256 private numTokensSellToAddToLiquidity;
 
@@ -123,6 +126,14 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
             } catch {}
         }
         _;
+    }
+
+    // @dev Prevents a contract from calling itself, directly or indirectly.
+    modifier nonReentrant() {
+        require(!rentrancy_lock);
+        rentrancy_lock = true;
+        _;
+        rentrancy_lock = false;
     }
 
     // @dev the constructor
@@ -818,7 +829,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
     }
 
     // todo: make nonReentrant
-    function withdraw() onlyOwner public {
+    function withdraw() onlyOwner public nonReentrant {
         uint256 balance = address(this).balance;
         Address.sendValue(payable(msg.sender), balance);
 //        payable(msg.sender).transfer(balance);
@@ -835,7 +846,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockDexTransactions {
         address tokenAddress,
         address to,
         uint256 amount
-    ) external virtual onlyOwner {
+    ) external virtual nonReentrant onlyOwner {
         require(tokenAddress.isContract(), "ERC20 token address must be a contract");
 
         IERC20 tokenContract = IERC20(tokenAddress);
