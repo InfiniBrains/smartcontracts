@@ -25,7 +25,7 @@ import "./TimeLockTransactions.sol";
 
 import "hardhat/console.sol";
 
-contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions {
+contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address;
 
@@ -828,14 +828,12 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions {
         excludeFromReward(_newBurnAddress);
     }
 
-    // todo: make nonReentrant
-    function withdraw() onlyOwner public nonReentrant {
+    function withdraw() onlyOwner nonReentrant public {
         uint256 balance = address(this).balance;
         Address.sendValue(payable(msg.sender), balance);
 //        payable(msg.sender).transfer(balance);
     }
 
-    // todo: make nonReentrant
     /**
      * @dev Withdraw any ERC20 token from this contract
      * @param tokenAddress ERC20 token to withdraw
