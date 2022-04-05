@@ -128,14 +128,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         _;
     }
 
-    // @dev Prevents a contract from calling itself, directly or indirectly.
-    modifier nonReentrant() {
-        require(!rentrancy_lock);
-        rentrancy_lock = true;
-        _;
-        rentrancy_lock = false;
-    }
-
     // @dev the constructor
     constructor (string memory __name, string memory __symbol) {
         _name = __name;
