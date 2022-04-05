@@ -231,7 +231,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expect(initialReserves).lt(finalReserves);
     });
 
-    it.only("user should receive cakes as cashback", async function () {
+    it("user should receive cakes as cashback", async function () {
       await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.1"));
       await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
       await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
@@ -285,6 +285,18 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         expect(await contract.balanceOf(address3.address)).to.equal(
           ethers.utils.parseEther("300.3")
         );
+      });
+
+      it("Check gas price",async function(){
+        await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0.01"));
+        await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0.01"));
+        await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.01"));
+        await contract.connect(owner).setLiquidityAddress(owner.address);
+
+        console.log("erc20 with fees");
+        console.log(await contract
+            .connect(address1).estimateGas
+            .transfer(address2.address, expandTo9Decimals("500")));
       });
     });
 

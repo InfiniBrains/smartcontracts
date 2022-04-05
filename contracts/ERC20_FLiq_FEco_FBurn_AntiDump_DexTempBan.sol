@@ -39,16 +39,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     address public ecoSystemAddress;
 
     // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 public liquidityFee = 65 * 10**15; // 6.5%
+    uint256 public liquidityFee = 5 * 10**16; // 5%
 
     // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
     address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 public burnFee = 1 * 10**16; // 1%
+    uint256 public burnFee = 0; // 1 * 10**16; // 0%
 
     // @dev the total max value of the fee
-    uint256 public constant MAXFEE = 2 * 10**17; // 20%
+    uint256 public constant MAXFEE = 3 * 10**17; // 30%
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -60,16 +60,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     uint256 public totalFees = 0;
 
     // @dev antidump mechanics
-    uint256 public antiDumpThreshold = 5 * 10**16; // 5%
+    uint256 public antiDumpThreshold = 5 * 10**15; // 0.5%
 
     // @dev antidump mechanics
-    uint256 public antiDumpFee = 2 * 10**17; // 20%
+    uint256 public antiDumpFee = 3 * 10**17; // 30%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**16; // 1%
+    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**15; // 0.1%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_FEE_LIMIT = 2 * 10**17; // 20%
+    uint256 public constant ANTI_DUMP_FEE_LIMIT = 3 * 10**17; // 30%
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
