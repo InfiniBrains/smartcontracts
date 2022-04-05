@@ -4,14 +4,14 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "hardhat/console.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "./TimeLockDexTransactions.sol";
+import "./TimeLockTransactions.sol";
 
 /**
 * Features:
@@ -25,7 +25,7 @@ import "./TimeLockDexTransactions.sol";
 *   Dex Pair based on BUSD. (Not possible)
 *   Prevent people from creating peers without company authorization.
 */
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockDexTransactions {
+contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions {
     using SafeMath for uint256;
     using Address for address;
 
@@ -39,16 +39,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
     address public ecoSystemAddress;
 
     // @dev the fee the liquidity takes. value uses decimals() as multiplicative factor
-    uint256 public liquidityFee = 65 * 10**15; // 6.5%
+    uint256 public liquidityFee = 5 * 10**16; // 5%
 
     // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
     address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 public burnFee = 1 * 10**16; // 1%
+    uint256 public burnFee = 0; // 1 * 10**16; // 0%
 
     // @dev the total max value of the fee
-    uint256 public constant MAXFEE = 2 * 10**17; // 20%
+    uint256 public constant MAXFEE = 3 * 10**17; // 30%
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -60,16 +60,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
     uint256 public totalFees = 0;
 
     // @dev antidump mechanics
-    uint256 public antiDumpThreshold = 5 * 10**16; // 5%
+    uint256 public antiDumpThreshold = 5 * 10**15; // 0.5%
 
     // @dev antidump mechanics
-    uint256 public antiDumpFee = 2 * 10**17; // 20%
+    uint256 public antiDumpFee = 3 * 10**17; // 30%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 10**16; // 1%
+    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**15; // 0.1%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_FEE_LIMIT = 2 * 10**17; // 20%
+    uint256 public constant ANTI_DUMP_FEE_LIMIT = 3 * 10**17; // 30%
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -90,10 +90,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
         _mint(owner(), totalSupply);
 
         // Create a uniswap pair for this new token
-//        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
-        dexRouter = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1); // testnet
-//        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // mainnet
-        uniswapFactoryAddress = address(0x6725F303b657a9451d8BA641348b6761A6CC7a17); // testnet
+        dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
+//        dexRouter = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1); // testnet
+        uniswapFactoryAddress = address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // mainnet
+//        uniswapFactoryAddress = address(0x6725F303b657a9451d8BA641348b6761A6CC7a17); // testnet
 
         dexPair = IUniswapV2Factory(dexRouter.factory()).createPair(address(this), dexRouter.WETH());
         _setAutomatedMarketMakerPair(dexPair, true);
@@ -227,7 +227,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
             tokenAmount,
             0,
             0,
-            liquidityAddress == DEAD_ADDRESS ? _msgSender() : liquidityAddress,
+            liquidityAddress == DEAD_ADDRESS ? tx.origin : liquidityAddress, // todo: pass the address here instead of the origin
             block.timestamp.add(300)
         );
     }
@@ -268,13 +268,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
     }
 
     function timeLockCheck(address from, address to) internal {
-        if(automatedMarketMakerPairs[to]) {  // selling tokens
-            require(canOperate(from), "the sender cannot operate yet");
-            lockToOperate(from);
-        } else if(automatedMarketMakerPairs[from]) { // buying tokens
-            require(canOperate(to), "the recipient cannot sell yet");
-            lockToOperate(to);
-        }
+        if(automatedMarketMakerPairs[to])  // selling tokens
+            lockIfCanOperateAndRevertIfNotAllowed(from);
+        else if(automatedMarketMakerPairs[from]) // buying tokens
+            lockIfCanOperateAndRevertIfNotAllowed(to);
     }
 
     function setAntiDump(uint256 newThreshold, uint256 newFee) external onlyOwner {
@@ -329,7 +326,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
 
-            if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]){
+            if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]) {
                 if (ecoSystemFee > 0) {
                     tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
@@ -338,8 +335,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, ERC20Burnable, TimeLockD
                 if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity); 
-                    }
+                    _swapAndLiquify(tokensToLiquidity);
+                }
             }
 
             if (burnFee > 0) {
