@@ -46,8 +46,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
     uint256 public burnFee = 0; // 1 * 10**16; // 0%
 
-    // @dev the total max value of the fee
-    uint256 public constant MAXFEE = 3 * 10**17; // 30%
+    // @dev the max value of the ordinary fees sum
+    uint256 public constant FEE_LIMIT = 20 * 10**16; // 20%
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;
@@ -62,13 +62,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     uint256 public antiDumpThreshold = 5 * 10**15; // 0.5%
 
     // @dev antidump mechanics
-    uint256 public antiDumpFee = 3 * 10**17; // 30%
+    uint256 public antiDumpFee = 25 * 10**16; // 25%
 
     // @dev antidump mechanics
     uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**15; // 0.1%
 
-    // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_FEE_LIMIT = 3 * 10**17; // 30%
+    // @dev antidump mechanics the total max value of the extra fees
+    uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -137,7 +137,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
 
     function checkFeesChanged(uint256 _oldFee, uint256 _newFee) internal view {
         uint256 _fees = ecoSystemFee.add(liquidityFee).add(burnFee).add(_newFee).sub(_oldFee);
-        require(_fees <= MAXFEE, "Fees exceeded max limitation");
+        require(_fees <= FEE_LIMIT, "Fees exceeded max limitation");
     }
 
     function setEcoSystemAddress(address newAddress) public onlyOwner {
@@ -187,7 +187,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         totalFees = liquidityFee.add(burnFee).add(ecoSystemFee);
     }
 
-    function _swapAndLiquify(uint256 amount) private {
+    function _swapAndLiquify(uint256 amount, address cakeReceiver) private {
         uint256 half = amount.div(2);
         uint256 otherHalf = amount.sub(half);  // token
 
@@ -197,7 +197,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
 
         uint256 newAmount = address(this).balance.sub(initialAmount);  // bnb
 
-        _addLiquidity(otherHalf, newAmount);
+        _addLiquidity(otherHalf, newAmount, cakeReceiver);
 
         emit SwapAndLiquify(half, newAmount, otherHalf);
     }
@@ -218,7 +218,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         );
     }
 
-    function _addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
+    function _addLiquidity(uint256 tokenAmount, uint256 bnbAmount, address cakeReceiver) private {
         _approve(address(this), address(dexRouter), tokenAmount);
 
         dexRouter.addLiquidityETH{ value: bnbAmount }(
@@ -226,7 +226,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             tokenAmount,
             0,
             0,
-            liquidityAddress == DEAD_ADDRESS ? tx.origin : liquidityAddress, // todo: pass the address here instead of the origin
+            cakeReceiver,
             block.timestamp.add(300)
         );
     }
@@ -254,7 +254,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         _;
     }
 
-
     function getTokenVolumeFromPair(address pairAddr) internal returns (uint256){
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
         (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairAddr).getReserves();
@@ -263,7 +262,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             return reserve0;
         else if(pair.token1() == address(this))
             return reserve1;
-        revert("not a pair");
+        else
+            revert("not a pair");
     }
 
     function timeLockCheck(address from, address to) internal {
@@ -334,7 +334,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
                 if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
-                    _swapAndLiquify(tokensToLiquidity);
+                    if(liquidityAddress == DEAD_ADDRESS) { // lp token returns to the wallet as cashback
+                        if(automatedMarketMakerPairs[to]) // sell, so the wallet is the "from"
+                            _swapAndLiquify(tokensToLiquidity, from);
+                        else // buying, so the wallet is the "to"
+                            _swapAndLiquify(tokensToLiquidity, to);
+                    }
+                    else // lp token goes to the company
+                        _swapAndLiquify(tokensToLiquidity, liquidityAddress);
                 }
             }
 
