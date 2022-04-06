@@ -7,7 +7,7 @@ pragma solidity ^0.8.9;
 contract TimeLockTransactions {
     mapping (address => uint) private walletToTime;
 
-    uint private immutable _maxAllowedTime = 1 days;
+    uint private constant MAX_ALLOWED_TIME = 1 days;
     uint private _lockTime = 5 minutes; // 5 minutes is the default
 
     function getLockTime() external view returns(uint){
@@ -33,7 +33,7 @@ contract TimeLockTransactions {
 
     // @dev if you are inheriting this contract, you should expose this function and protect it via onlyowner or roles
     function _setLockTime(uint timeBetweenTransactions) internal {
-        require(timeBetweenTransactions <= _maxAllowedTime, "TimeLock: max temp ban greater than the allowed");
+        require(timeBetweenTransactions <= MAX_ALLOWED_TIME, "TimeLock: max temp ban greater than the allowed");
         _lockTime = timeBetweenTransactions;
         emit SetLockTimeEvent(timeBetweenTransactions);
     }

@@ -18,11 +18,10 @@ import "./TimeLockTransactions.sol";
 *   Liquidity fee can go to all company. (Company configurable)
 *   Enterprise ecosystem fee. (Company configurable)
 *   Burn rate. (Company configurable up to a certain limit)
-*   Total fees capped at 20%.
+*   Total fees capped.
 *   Upgradable to next token.
 *   Dex volume based anti-whale fees. (Configurable to a certain extent by the company)
 *   Time lock dex transactions.
-*   Dex Pair based on BUSD. (Not possible)
 *   Prevent people from creating peers without company authorization.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions {
