@@ -44,9 +44,9 @@ On every transaction, a fee is taken and distributed between all holders proport
 https://www.axi.com/int/blog/education/blockchain/reflection-tokens
 
 ## Circuit-Breaker fee - WiP
-(needs translation)
-- O circuit breaker visa evitar despejo valores na DEX, evitando assim que o tokem desvalorize rapidamente. O mecanismo consiste em incidir taxas extras de fee de reflection que irão progressivamente atuar partir de um target inicial de queda. Daí quanto mais queda houver, maiores serão as fees. As taxas extras partem de 0% até tornar a venda não viável.
-  * Ex. Em uma janela móvel de um dia, o minimo de valor de queda que comeca a ativar fees de Circuit-Breaker é de 10%(incidencia de fee extra de 0%) e o máximo é de 20%(incidindo fee extra de 100%, efetivamente travando transacao de venda). Após atingir o minimo, toda transação de venda incidirá taxa extra de reflection crescendo linearmente de 0% a quando tiver caido 10% até chegar 100% de taxas ao bater 20% de queda.
+- The circuit breaker aims to avoid a collaborative dump on DEX; in this process, the token will not rapidly lose value.
+The mechanism adds extra reflection fees that act progressively from an initial target. Hence the more drop there is, the higher the fees. Extra fees start at 0% until the sale becomes unviable.
+* Ex. In a one-day moving window, the minimum drop value that starts activating Circuit-Breaker fees is 10% (0% extra fee), and the maximum is 20% (100% extra fee, effectively locking the sale transaction). After reaching the minimum, every sale transaction will incur an extra reflection fee, growing linearly from 0% when it has fallen by 10% until reaching 100% fees when it reaches a 20% fall.
 
 
 
