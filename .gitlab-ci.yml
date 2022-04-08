@@ -39,6 +39,7 @@ pages:
   artifacts:
     paths:
       - coverage
+    expire_in: 30 days
 
 #build:
 #  stage: build
