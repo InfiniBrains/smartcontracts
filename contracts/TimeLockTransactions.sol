@@ -10,7 +10,11 @@ contract TimeLockTransactions {
     uint private constant MAX_ALLOWED_TIME = 1 days;
     uint private _lockTime = 5 minutes; // 5 minutes is the default
 
-    // todo: unlock mannually a wallet
+    // @dev unlock manually a wallet for one transaction
+    // @note if you are inheriting this contract, you should expose this function and protect it via onlyowner or roles
+    function _unlockWallet(address wallet) internal {
+        walletToTime[wallet] = 0;
+    }
 
     function getLockTime() external view returns(uint){
         return _lockTime;

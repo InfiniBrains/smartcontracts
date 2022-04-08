@@ -254,7 +254,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         _;
     }
 
-    function getTokenVolumeFromPair(address pairAddr) internal returns (uint256){
+    function getTokenVolumeFromPair(address pairAddr) internal view returns (uint256){
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
         (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairAddr).getReserves();
 
@@ -284,12 +284,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     }
     event SetAntiDump(uint256 newThreshold, uint256 newfee);
 
-    function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
+    function antiDumpCheck(address from, address to, uint256 amount) internal view returns(uint256) {
         address pair = DEAD_ADDRESS;
+
+        // we dont need "from" for now, but, we will keep it here for completeness
 
         // check if the transaction direction is sell token
         if(automatedMarketMakerPairs[to])
             pair = to;
+//        else if(automatedMarketMakerPairs[from])
+//            pair = from;
 
         if(pair!=DEAD_ADDRESS) {
             uint256 volume = getTokenVolumeFromPair(pair);
@@ -353,6 +357,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
         }
+    }
+
+    // @dev unlock a wallet for one transaction
+    function unlockWallet(address wallet) public onlyOwner {
+        _unlockWallet(wallet);
     }
 
     event ExcludeFromFees(address indexed account, bool isExcluded);
