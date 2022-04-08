@@ -8,10 +8,10 @@
 # https://hub.docker.com/r/library/node/tags/
 image: node:14
 
-stages:
-  - build
-  - test
-  - coverage
+#stages:
+#  - build
+#  - test
+#  - coverage
 
 # Pick zero or more services to be used on all builds.
 # Only needed when using a docker container to run your tests in.
@@ -30,13 +30,15 @@ cache:
     - artifacts/
     - cache/
 
-build:
-  stage: build
+pages:
   script:
     - npm install
     - npm run compile
     - npm run test
     - npm run coverage
+  artifacts:
+    paths:
+      - coverage/
 
 #build:
 #  stage: build
