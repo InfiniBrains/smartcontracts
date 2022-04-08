@@ -38,7 +38,7 @@ pages:
     - npm run coverage
   artifacts:
     paths:
-      - coverage/
+      - coverage
 
 #build:
 #  stage: build
