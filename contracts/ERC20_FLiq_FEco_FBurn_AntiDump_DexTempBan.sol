@@ -44,10 +44,10 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     address public liquidityAddress;
 
     // @dev the fee the burn takes. value uses decimals() as multiplicative factor
-    uint256 public burnFee = 0; // 1 * 10**16; // 0%
+    uint256 public burnFee = 0; // 0%
 
     // @dev the max value of the ordinary fees sum
-    uint256 public constant FEE_LIMIT = 20 * 10**16; // 20%
+    uint256 public constant FEE_LIMIT = 2 * 10**17; // 20%
 
     // @dev the defauld dex router
     IUniswapV2Router02 public dexRouter;

@@ -10,11 +10,13 @@ contract TimeLockTransactions {
     uint private constant MAX_ALLOWED_TIME = 1 days;
     uint private _lockTime = 5 minutes; // 5 minutes is the default
 
+    // todo: unlock mannually a wallet
+
     function getLockTime() external view returns(uint){
         return _lockTime;
     }
 
-    function getFromLastTransaction(address wallet) public view returns (uint) {
+    function getLockTime(address wallet) public view returns (uint) {
         return walletToTime[wallet];
     }
 
@@ -37,16 +39,6 @@ contract TimeLockTransactions {
         _lockTime = timeBetweenTransactions;
         emit SetLockTimeEvent(timeBetweenTransactions);
     }
-
-//    function _transfer(
-//        address from,
-//        address to,
-//        uint256 amount
-//    ) internal override {
-//        require(canOperate(from), "TimeLock: the sender cannot operate yet");
-//        lockToOperate(from);
-//        super._transfer(from,to,amount);
-//    }
 
     event SetLockTimeEvent(uint timeBetweenPurchases);
 }
