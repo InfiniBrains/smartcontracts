@@ -1,4 +1,4 @@
-# InfiniBrains SmartContracts
+# SmartContracts
 
 Take a look on our [Coverage](https://infinibrains.github.io/smartcontracts/) report.
 
