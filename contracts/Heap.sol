@@ -11,7 +11,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-// todo: get heap node by time
+// todo: get node by timestamp
 // todo: remove nodes older than a provided time
 
 library Heap { // default max-heap
