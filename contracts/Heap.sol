@@ -81,7 +81,7 @@ library Heap { // default max-heap
 
   //private
   function _extract(Data storage self, uint256 i) private returns(Node memory){//√
-    if(self.nodes.length <= i || i <= 0){ return Node(0,0,0); }
+    if(self.nodes.length <= i || i <= 0){ return Node(0,0,0); }  // todo: modifier add timesByIndeces
 
     Node memory extractedNode = self.nodes[i];
     delete self.indices[extractedNode.id];

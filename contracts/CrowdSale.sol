@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract CrowdSale is Ownable, Pausable {
+contract CrowdSale is Ownable, Pausable, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address;
 
@@ -86,7 +87,7 @@ contract CrowdSale is Ownable, Pausable {
     }
     event Sell(address _buyer, uint256 _amount);
 
-    function withdrawBNB(address to, uint256 amount) onlyOwner public {
+    function withdrawBNB(address to, uint256 amount) onlyOwner nonReentrant() public {
         uint256 balance = address(this).balance;
         require(amount<=balance,"Amount greater than the balance");
         Address.sendValue(payable(to), amount);
@@ -102,7 +103,7 @@ contract CrowdSale is Ownable, Pausable {
         address tokenAddress,
         address to,
         uint256 amount
-    ) external virtual onlyOwner {
+    ) external virtual nonReentrant() onlyOwner {
         require(tokenAddress.isContract(), "ERC20 token address must be a contract");
 
         IERC20 tokenContract = IERC20(tokenAddress);
