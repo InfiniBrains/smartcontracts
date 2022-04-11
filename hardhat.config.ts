@@ -7,20 +7,29 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { Wallet } from "ethers";
-
 import { resolve } from "path";
 import { HardhatNetworkUserConfig } from "hardhat/types/config";
 
 dotenv.config({ path: resolve(__dirname, "./.env") });
 
-let mnemonic = process.env.MNEMONIC;
-if (!mnemonic) {
-  console.warn("Please set MNEMONIC in a .env file. I create one random here");
-  mnemonic = Wallet.createRandom().mnemonic.phrase;
-  console.warn("RANDOM MNEMONIC used: " + mnemonic);
+const mnemonic = process.env.MNEMONIC || "";
+const privatekey = process.env.PRIVATEKEY || "";
+
+let wallet;
+
+if (mnemonic) {
+  wallet = Wallet.fromMnemonic(mnemonic);
+} else if (privatekey) {
+  wallet = new Wallet(privatekey);
+} else {
+  console.warn(
+      "Please set MNEMONIC or PRIVATEKEY in a .env file. I create one random seed here for you"
+  );
+  const mnemo = Wallet.createRandom().mnemonic.phrase;
+  console.warn("RANDOM MNEMONIC used: " + mnemo);
+  wallet = Wallet.fromMnemonic(mnemo);
 }
 
-const wallet = Wallet.fromMnemonic(mnemonic);
 console.log("Using wallet with address: " + wallet.address);
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -35,20 +44,20 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
-function getForkingSettings(): HardhatNetworkUserConfig {
+function getForkingSettings() {
   const url = process.env.CHAINSTACK_PROVIDER;
 
-  let ret: HardhatNetworkUserConfig = {};
+  let ret;
 
   if (url == null) {
     console.warn(
-      "........................................................................"
+        "........................................................................"
     );
     console.warn(
-      "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
+        "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
     );
     console.warn(
-      "........................................................................"
+        "........................................................................"
     );
     ret = { accounts: { mnemonic } };
   } else {
@@ -80,17 +89,17 @@ const config: HardhatUserConfig = {
   networks: {
     local: {
       url: "http://localhost:8545",
-      accounts: { mnemonic },
+      accounts: mnemonic ? { mnemonic } : [privatekey],
     },
     bsctest: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       chainId: 97,
-      accounts: { mnemonic },
+      accounts: mnemonic ? { mnemonic } : [privatekey],
     },
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
-      accounts: { mnemonic },
+      accounts: mnemonic ? { mnemonic } : [privatekey],
     },
     hardhat: getForkingSettings(),
   },
