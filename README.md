@@ -1,7 +1,6 @@
 # SmartContracts
 
 Take a look on our [Coverage](https://infinibrains.github.io/smartcontracts/) report.
-
 # ECR20 Custom mechanics
 
 ## Fees Overview
@@ -11,9 +10,7 @@ The company applies fees on each transaction. There are some fee mechanics coded
 All bans are temporary. The goal is to protect the typical user against some exploits. The temp ban has a hard limit that the company cannot change to further protect the users against abuse.
 
 # Ecosystem Fee
-The company receives this fee to sustain and maintain its long-term operations. This fee aims to remove tokens from the circulant economy to monetize the company to make the business profitable and sustainable, ensuring the product's future development.
-
-The mechanic works removing a percentage of the transaction amount and transfer it to  
+- The company receives this fee to sustain and maintain its long-term operations. This fee aims to remove tokens from the circulant economy to monetize the company to make the business profitable and sustainable, ensuring the product's future development.
 
 # Burn Fee
 - This fee removes tokens from the current circulating supply permanently. It effectively burns the token in an irrecoverable manner, so the user or the company cannot rescue it.
@@ -21,16 +18,14 @@ The mechanic works removing a percentage of the transaction amount and transfer 
 - This could be interpreted as a counter-measure to inflation caused by other economic mechanics such as tokens distribution from Play to Earn.
 
 # Liquidity fee
-- It is a fee used to increase the size of the DEX pool. In general, it works as follows:
+- It is a fee taken used to increase the size of the DEX pool. In general, it works as follows:
 1. Half of the liquidity fee tokens are sold at the current price on the DEX; in exchange, the contract receives native coins (BNB for Binance, ETH for Ethereum, Matic for Polygon, or others);
 2. The contract now holds half of the value in tokens and the other half in native tokens. It uses both to add liquidity to the pool. At this moment, the DEX issues a deposit ticket as known as "LP Tokens" (Liquidity Pool Tokens).
 3. The company reserves the right to decide where the LP Token goes. This setting is switchable between returning a token to the user in the form of cashback or transferring it to the company treasure.
 
 # TimeLock DEX transactions
 In order to reduce bot actions and serial trades, we chose to implement the measure to block the wallet from interacting with the DEX temporarily.
-
 The contract protects the users from company abuse by checking against a hardcoded limit if the desirable time lock is acceptable.
-
 The mechanic behind this implementation is that if the wallet can operate(not time-locked), it will lock further transactions in the wallet for a pre-determined time and allow the current transaction to continue; otherwise, it only blocks it.
 
 # Anti dump measures
@@ -48,14 +43,7 @@ https://www.axi.com/int/blog/education/blockchain/reflection-tokens
 The mechanism adds extra reflection fees that act progressively from an initial target. Hence the more drop there is, the higher the fees. Extra fees start at 0% until the sale becomes unviable.
 * Ex. In a one-day moving window, the minimum drop value that starts activating Circuit-Breaker fees is 10% (0% extra fee), and the maximum is 20% (100% extra fee, effectively locking the sale transaction). After reaching the minimum, every sale transaction will incur an extra reflection fee, growing linearly from 0% when it has fallen by 10% until reaching 100% fees when it reaches a 20% fall.
 
-
-
-
-# Advanced Sample Hardhat Project
-
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
-
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+# Tech Stuff
 
 Try running some of the following tasks:
 
