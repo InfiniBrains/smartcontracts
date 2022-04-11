@@ -22,7 +22,8 @@ library Heap { // default max-heap
   struct Data{
     uint256 idCount;
     Node[] nodes; // root is index 1; index 0 not used
-    mapping (uint256 => uint256) indices; // unique time => node index
+    mapping (uint256 => uint256) indices; // unique id => node index
+    mapping (uint256 => uint256) timeByIndices; //unique time => node index
   }
   struct Node{
     uint256 id;
@@ -37,7 +38,7 @@ library Heap { // default max-heap
 
   function insert(Data storage self, uint256 price, uint256 time) internal returns(Node memory){//√
     if(self.nodes.length == 0){ init(self); }// test on-the-fly-init
-    self.idCount++;
+    self.idCount.add(1);
 //    self.nodes.length++; // old approach
     self.nodes.push(Node(0,0,0));
     Node memory n = Node(self.idCount, price, time);
@@ -64,6 +65,12 @@ library Heap { // default max-heap
     // return self.nodes.length > i ? self.nodes[i] : Node(0,0,0,0); // old approach
     return self.nodes[i];
   }
+
+  function getByTime(Data storage self, uint256 time) internal view returns(Node storage){
+    require(self.timeByIndices[time] != 0, "index not found");
+    return self.nodes[self.timeByIndices[time]];
+  }
+
   function getMax(Data storage self) internal view returns(Node storage){
     return getByIndex(self, ROOT_INDEX);
   }
@@ -119,9 +126,11 @@ library Heap { // default max-heap
     }
   }
 
+
   // todo: check all functions using id
   function _insert(Data storage self, Node memory n, uint256 i) private{//√
     self.nodes[i] = n;
     self.indices[n.id] = i;
+    self.timeByIndices[n.time] = i; //todo: check is real
   }
 }
