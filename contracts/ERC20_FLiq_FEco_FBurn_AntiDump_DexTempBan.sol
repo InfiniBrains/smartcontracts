@@ -72,7 +72,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
 
     // @dev the total max value of the fees
-    uint256 private numTokensSellToAddToLiquidity = 0; // 500 tokens
+    uint256 private numTokensSellToAddToLiquidity = 0;
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
@@ -92,7 +92,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
 
         _mint(owner(), totalSupply);
 
-        numTokensSellToAddToLiquidity = totalSupply.mul(1 * 10**12).div(10 ** decimals()); // 0.000001% of total supply
+        numTokensSellToAddToLiquidity = totalSupply.div(10**6); // 0.000001% of total supply
 
         // Create a uniswap pair for this new token
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
@@ -113,6 +113,13 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit ExcludeFromFees(address(this), true);
         emit ExcludeFromFees(DEAD_ADDRESS, true);
     }
+
+    function setMinNumTokensSellToAddToLiquidity(uint256 newLimit) external onlyOwner {
+        require(newLimit >= totalSupply().div(10**6), "new limit is too low");
+        numTokensSellToAddToLiquidity = newLimit;
+        emit SetMinNumTokensSellToAddToLiquidity(newLimit);
+    }
+    event SetMinNumTokensSellToAddToLiquidity(uint256 newLimit);
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
         require(pair != dexPair, "default pair cannot be changed");
@@ -335,36 +342,42 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
 
+            // automatedMarketMakerPairs[from] -> buy tokens on dex
+            // automatedMarketMakerPairs[to]   -> sell tokens on dex
             if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]) {
+                // apply ecoSystemFee if enabled
                 if (ecoSystemFee > 0) {
                     tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
                 }
 
-                // liquidity fee does not apply when buying tokens from dex if lp cashback is on. _swapAndLiquify fails if from == dexPair
-                if (liquidityFee > 0 && !(automatedMarketMakerPairs[from] && liquidityAddress == DEAD_ADDRESS)) {
+                // apply liquidity fee
+                if (liquidityFee > 0) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
 
-                    bool overMinTokenBalance = balanceOf(address(this)) >= numTokensSellToAddToLiquidity;
-                    if(liquidityAddress == DEAD_ADDRESS) // lp token returns to the wallet as cashback
-                        _swapAndLiquify(tokensToLiquidity, from);
-                    else if (from != dexPair && overMinTokenBalance) // swapAndLiquify only if selling tokens to dex
-                        _swapAndLiquify(numTokensSellToAddToLiquidity, liquidityAddress); // lp token goes to the company 
+                    // SELL _swapAndLiquify fails if we add liquidity and from == dexPair. it is a uniswap known issue
+                    if(automatedMarketMakerPairs[to]){
+                        // Company receives lp token
+                        if(liquidityAddress != DEAD_ADDRESS){
+                            if (balanceOf(address(this)) >= numTokensSellToAddToLiquidity)
+                                _swapAndLiquify(balanceOf(address(this)), liquidityAddress);
+                        }
+                        // Cashback the user with LP token
+                        else
+                            _swapAndLiquify(tokensToLiquidity, from);
+                    }
+                    // The LP token from BUY and will be stored inside the contract until the company withdraws it
                 }
             }
 
+            // apply burn fees always
             if (burnFee > 0) {
                 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
-            uint256 amountMinusFees = 0;
-            if (automatedMarketMakerPairs[from] && liquidityAddress == DEAD_ADDRESS) { // liquidity fee off
-                amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToBurn);
-            } else { // liquidity fee on
-                amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
-            }
+            uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
             super._transfer(from, to, amountMinusFees);
         }
     }
