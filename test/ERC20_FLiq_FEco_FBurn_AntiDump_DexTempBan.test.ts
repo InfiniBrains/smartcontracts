@@ -1,73 +1,76 @@
 /* eslint-disable camelcase */
 
 import { expect } from "chai";
-import { ethers, network, waffle } from "hardhat";
+import { ethers, network } from "hardhat";
 import {
   ERC20FLiqFEcoFBurnAntiDumpDexTempBan,
   ERC20FLiqFEcoFBurnAntiDumpDexTempBan__factory,
+  IUniswapV2Router02,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {Contract, utils, Wallet} from "ethers";
-import { bigNumberToFloat, expandTo9Decimals, expandTo18Decimals } from "./shared/utilities";
+import { Contract, utils } from "ethers";
+import {
+  bigNumberToFloat,
+  expandTo9Decimals,
+  expandTo18Decimals,
+} from "./shared/utilities";
 import { abi } from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 import { abi as factoryAbi } from "@uniswap/v2-periphery/build/IUniswapV2Factory.json";
 import { abi as pairAbi } from "@uniswap/v2-periphery/build/IUniswapV2Pair.json";
 import busdAbi from "./shared/busd.json";
-import {parseEther} from "ethers/lib/utils";
 
 // ATTENTION! do not commit the line below!! You should put only for your tests only!
-//describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
+// describe.only("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
 describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
-
   const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
-    const BUSD_ADDRESS = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
-    const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-    let wethAddress = "";
-    let contract: ERC20FLiqFEcoFBurnAntiDumpDexTempBan;
-    let router: Contract;
-    let factory: Contract;
-    let busdContract: Contract;
-    let busdHotWalletAddress: string = '0x8894e0a0c962cb723c1976a4421c95949be2d4e3';
-    let busdHotWallet: SignerWithAddress;
-    let pairContract: Contract;
-    let owner: SignerWithAddress;
-    let address1: SignerWithAddress;
-    let address2: SignerWithAddress;
-    let address3: SignerWithAddress;
-    let address4: SignerWithAddress;
-    let address5: SignerWithAddress;
+  const BUSD_ADDRESS = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
+  const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+  let WETH: string;
+  let contract: ERC20FLiqFEcoFBurnAntiDumpDexTempBan;
+  let router: IUniswapV2Router02;
+  let factory: Contract;
+  let busdContract: Contract;
+  let busdHotWalletAddress: string =
+    "0x8894e0a0c962cb723c1976a4421c95949be2d4e3";
+  let busdHotWallet: SignerWithAddress;
+  let pairContract: Contract;
+  let owner: SignerWithAddress;
+  let address1: SignerWithAddress;
+  let address2: SignerWithAddress;
+  let address3: SignerWithAddress;
+  let address4: SignerWithAddress;
 
-    before(async function () {
-        [owner, address1, address2, address3, address4, address5] =
-        await ethers.getSigners();
+  before(async function () {
+    [owner, address1, address2, address3, address4] = await ethers.getSigners();
 
-        await network.provider.request({
-          method: "hardhat_impersonateAccount",
-          params: [busdHotWalletAddress],
-        });
-
-        //BUSD contract
-        busdHotWallet = await ethers.getSigner(busdHotWalletAddress);
-        busdContract = new ethers.Contract(BUSD_ADDRESS, busdAbi, busdHotWallet);
-
-        let bal = await ethers.provider.getBalance(owner.address);
-
-        //ROUTER CONTRACT
-        router = new ethers.Contract(ROUTER_ADDRESS, abi, owner);
-        wethAddress = await router.WETH();
-
-        //FACTORY CONTRACT
-        let factoryAddress = await router.factory();
-        factory = new ethers.Contract(factoryAddress, factoryAbi, owner);
-
-        //BNB FUNDING
-        await busdHotWallet.sendTransaction({
-            to: owner.address,
-            value: expandTo18Decimals(100)
-        });
-        bal = await ethers.provider.getBalance(owner.address);
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [busdHotWalletAddress],
     });
 
+    //BUSD contract
+    busdHotWallet = await ethers.getSigner(busdHotWalletAddress);
+    busdContract = new ethers.Contract(BUSD_ADDRESS, busdAbi, busdHotWallet);
+
+    let bal = await ethers.provider.getBalance(owner.address);
+
+    //ROUTER CONTRACT
+    router = <IUniswapV2Router02>(
+      new ethers.Contract(ROUTER_ADDRESS, abi, owner)
+    );
+    WETH = await router.WETH();
+
+    //FACTORY CONTRACT
+    let factoryAddress = await router.factory();
+    factory = new ethers.Contract(factoryAddress, factoryAbi, owner);
+
+    //BNB FUNDING
+    await busdHotWallet.sendTransaction({
+      to: owner.address,
+      value: expandTo18Decimals(100),
+    });
+    bal = await ethers.provider.getBalance(owner.address);
+  });
 
   beforeEach(async function () {
     const ERC20Factory = <ERC20FLiqFEcoFBurnAntiDumpDexTempBan__factory>(
@@ -79,7 +82,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expandTo18Decimals(1000000000)
     );
     contract = await contract.deployed();
-    let pairAddress = await factory.getPair(contract.address, wethAddress)
+    let pairAddress = await factory.getPair(contract.address, WETH);
     //PAIR CONTRACT
     pairContract = new ethers.Contract(pairAddress, pairAbi, owner);
   });
@@ -146,16 +149,14 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
   });
 
   describe("after liquidity is added", function () {
-
     beforeEach(async function () {
       await contract.setBurnFee(0);
       await contract.setEcosystemFee(0);
       await contract.setLiquidityFee(0);
 
-      const tokenAmount = expandTo18Decimals(100000);
+      const tokenAmount = expandTo18Decimals(10000000);
 
       const bnbAmount = expandTo18Decimals(1000);
-
 
       await contract.approve(router.address, ethers.constants.MaxUint256);
 
@@ -170,87 +171,180 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         { value: bnbAmount }
       );
 
-      //let [reserve0, reserve1] = 
+      await contract.transfer(address1.address, expandTo18Decimals(100000));
+    });
 
-      // const busdAmount = expandTo18Decimals(100000);
+    it("Should swap ETH for Tokens supporting fees on transfer", async function () {
+      await expect(
+        router
+          .connect(address1)
+          .swapExactETHForTokensSupportingFeeOnTransferTokens(
+            0,
+            [WETH, contract.address],
+            address1.address,
+            ethers.constants.MaxUint256,
+            { value: utils.parseEther("10") }
+          )
+      ).to.emit(contract, "Transfer");
+    });
 
-      // await contract.connect(owner).transfer(whale.address, tokenAmount);
+    it("Should swap Tokens for ETH supporting fees on transfer", async function () {
+      await contract
+        .connect(address1)
+        .approve(router.address, ethers.constants.MaxUint256);
 
-      // await contract
-      //   .connect(whale)
-      //   .approve(ROUTER_ADDRESS, ethers.constants.MaxUint256);
+      await expect(
+        router
+          .connect(address1)
+          .swapExactTokensForETHSupportingFeeOnTransferTokens(
+            utils.parseEther("1000"),
+            0,
+            [contract.address, WETH],
+            address1.address,
+            ethers.constants.MaxUint256
+          )
+      ).to.emit(contract, "Transfer");
+    });
 
-      // await busd
-      //   .connect(whale)
-      //   .approve(ROUTER_ADDRESS, ethers.constants.MaxUint256);
+    it("Should not charge liquidity fee when buying tokens from dex if lp cashback is on", async function () {
+      await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
 
-      // // add liquidity to BUSD liquidity pool
-      // await router
-      //   .connect(whale)
-      //   .addLiquidity(
-      //     contract.address,
-      //     BUSD_ADDRESS,
-      //     tokenAmount,
-      //     busdAmount,
-      //     0,
-      //     0,
-      //     whale.address,
-      //     ethers.constants.MaxUint256
-      //   );
+      const amountsOut = await router.getAmountsOut(utils.parseEther("10"), [
+        WETH,
+        contract.address,
+      ]);
 
-      await contract.transfer(address1.address, expandTo18Decimals(10000));
+      await router
+        .connect(address1)
+        .swapExactETHForTokensSupportingFeeOnTransferTokens(
+          0,
+          [WETH, contract.address],
+          address4.address,
+          ethers.constants.MaxUint256,
+          { value: utils.parseEther("10") }
+        );
+
+      expect(await contract.balanceOf(address4.address)).to.equal(
+        amountsOut[amountsOut.length - 1]
+      );
+    });
+
+    it("Should swapAndLiquify only when selling to dex", async function () {
+      await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
+      await contract.setLiquidityAddress(address4.address);
+
+      const amountsOut = await router.getAmountsOut(utils.parseEther("10"), [
+        WETH,
+        contract.address,
+      ]);
+
+      await router
+        .connect(address1)
+        .swapExactETHForTokensSupportingFeeOnTransferTokens(
+          0,
+          [WETH, contract.address],
+          address1.address,
+          ethers.constants.MaxUint256,
+          { value: utils.parseEther("10") }
+        );
+
+      expect(await contract.balanceOf(contract.address)).to.equal(
+        amountsOut[amountsOut.length - 1].div(100)
+      );
+
+      await contract.transfer(address2.address, utils.parseEther("2000"));
+
+      await contract
+        .connect(address2)
+        .approve(router.address, utils.parseEther("2000"));
+
+      await router
+        .connect(address2)
+        .swapExactTokensForETHSupportingFeeOnTransferTokens(
+          utils.parseEther("2000"),
+          0,
+          [contract.address, WETH],
+          address2.address,
+          ethers.constants.MaxUint256
+        );
+
+      expect(await contract.balanceOf(contract.address)).to.be.lt(
+        utils.parseEther("10")
+      );
     });
 
     it("liquidityAddress should receive cakes", async function () {
-      await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
+      await contract
+        .connect(owner)
+        .setEcosystemFee(ethers.utils.parseEther("0"));
       await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
-      await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.01"));
+      await contract
+        .connect(owner)
+        .setLiquidityFee(ethers.utils.parseEther("0.01"));
       await contract.connect(owner).setLiquidityAddress(owner.address);
 
       await contract
-          .connect(address1)
-          .approve(router.address, expandTo18Decimals(1));
+        .connect(address1)
+        .approve(router.address, expandTo18Decimals(100000));
 
-      const initialPairBalance = bigNumberToFloat(await pairContract.balanceOf(await contract.liquidityAddress()));
-      const initialReserves = bigNumberToFloat(await contract.balanceOf(await contract.dexPair()));
+      const initialPairBalance = bigNumberToFloat(
+        await pairContract.balanceOf(await contract.liquidityAddress())
+      );
+      const initialReserves = bigNumberToFloat(
+        await contract.balanceOf(await contract.dexPair())
+      );
 
       await router
-          .connect(address1)
-          .swapExactTokensForETHSupportingFeeOnTransferTokens(
-              expandTo18Decimals(1),
-              0,
-              [contract.address, router.WETH()],
-              address1.address,
-              ethers.constants.MaxUint256
-          );
+        .connect(address1)
+        .swapExactTokensForETHSupportingFeeOnTransferTokens(
+          expandTo18Decimals(100000),
+          0,
+          [contract.address, WETH],
+          address1.address,
+          ethers.constants.MaxUint256
+        );
 
-      const finalReserves = bigNumberToFloat(await contract.balanceOf(await contract.dexPair()));
-      const finalPairBalance = bigNumberToFloat(await pairContract.balanceOf(await contract.liquidityAddress()));
+      const finalReserves = bigNumberToFloat(
+        await contract.balanceOf(await contract.dexPair())
+      );
+      const finalPairBalance = bigNumberToFloat(
+        await pairContract.balanceOf(await contract.liquidityAddress())
+      );
 
       expect(initialPairBalance).lt(finalPairBalance);
       expect(initialReserves).lt(finalReserves);
     });
 
     it("user should receive cakes as cashback", async function () {
-      await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.1"));
-      await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0"));
+      await contract
+        .connect(owner)
+        .setLiquidityFee(ethers.utils.parseEther("0.1"));
+      await contract
+        .connect(owner)
+        .setEcosystemFee(ethers.utils.parseEther("0"));
       await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0"));
 
-      await contract.connect(address1).approve(router.address, expandTo18Decimals(1));
+      await contract
+        .connect(address1)
+        .approve(router.address, expandTo18Decimals(1));
 
-      const initialCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
+      const initialCakeBalance = bigNumberToFloat(
+        await pairContract.balanceOf(address1.address)
+      );
 
       await router
-          .connect(address1)
-          .swapExactTokensForETHSupportingFeeOnTransferTokens(
-              expandTo18Decimals(1),
-              0,
-              [contract.address, router.WETH()],
-              address1.address,
-              ethers.constants.MaxUint256
-          );
+        .connect(address1)
+        .swapExactTokensForETHSupportingFeeOnTransferTokens(
+          expandTo18Decimals(1),
+          0,
+          [contract.address, WETH],
+          address1.address,
+          ethers.constants.MaxUint256
+        );
 
-      const finalCakeBalance = bigNumberToFloat(await pairContract.balanceOf(address1.address));
+      const finalCakeBalance = bigNumberToFloat(
+        await pairContract.balanceOf(address1.address)
+      );
 
       expect(initialCakeBalance).lt(finalCakeBalance);
     });
@@ -267,36 +361,46 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       });
 
       it("should activate anti dump mechanism if threshold is reached", async function () {
+        await contract.transfer(address1.address, expandTo18Decimals(1));
+
         await contract
           .connect(address1)
-          .approve(router.address, expandTo18Decimals(1001));
+          .approve(router.address, expandTo18Decimals(100001));
 
         await router
           .connect(address1)
           .swapExactTokensForETHSupportingFeeOnTransferTokens(
-            expandTo18Decimals(1001),
+            expandTo18Decimals(100001),
             0,
-            [contract.address, router.WETH()],
+            [contract.address, WETH],
             address1.address,
             ethers.constants.MaxUint256
           );
 
         // 30% (10% from ecoSystemFee + 20% from antiDumpFee)
         expect(await contract.balanceOf(address3.address)).to.equal(
-          ethers.utils.parseEther("300.3")
+          ethers.utils.parseEther("30000.3")
         );
       });
 
-      it("Check gas price",async function(){
-        await contract.connect(owner).setEcosystemFee(ethers.utils.parseEther("0.01"));
-        await contract.connect(owner).setBurnFee(ethers.utils.parseEther("0.01"));
-        await contract.connect(owner).setLiquidityFee(ethers.utils.parseEther("0.01"));
+      it("Check gas price", async function () {
+        await contract
+          .connect(owner)
+          .setEcosystemFee(ethers.utils.parseEther("0.01"));
+        await contract
+          .connect(owner)
+          .setBurnFee(ethers.utils.parseEther("0.01"));
+        await contract
+          .connect(owner)
+          .setLiquidityFee(ethers.utils.parseEther("0.01"));
         await contract.connect(owner).setLiquidityAddress(owner.address);
 
         console.log("erc20 with fees");
-        console.log(await contract
-            .connect(address1).estimateGas
-            .transfer(address2.address, expandTo9Decimals("500")));
+        console.log(
+          await contract
+            .connect(address1)
+            .estimateGas.transfer(address2.address, expandTo9Decimals("500"))
+        );
       });
     });
 
@@ -317,7 +421,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
           .swapExactTokensForETHSupportingFeeOnTransferTokens(
             expandTo18Decimals(500),
             0,
-            [contract.address, router.WETH()],
+            [contract.address, WETH],
             address1.address,
             ethers.constants.MaxUint256
           );
@@ -328,7 +432,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
             .swapExactTokensForETHSupportingFeeOnTransferTokens(
               expandTo18Decimals(500),
               0,
-              [contract.address, router.WETH()],
+              [contract.address, WETH],
               address1.address,
               ethers.constants.MaxUint256
             )
@@ -341,7 +445,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
           .swapExactTokensForETHSupportingFeeOnTransferTokens(
             expandTo18Decimals(500),
             0,
-            [contract.address, router.WETH()],
+            [contract.address, WETH],
             address1.address,
             ethers.constants.MaxUint256
           );
@@ -356,7 +460,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
             .swapExactTokensForETHSupportingFeeOnTransferTokens(
               expandTo18Decimals(500),
               0,
-              [contract.address, router.WETH()],
+              [contract.address, WETH],
               address1.address,
               ethers.constants.MaxUint256
             )
@@ -375,21 +479,21 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     expect(await contract.setAutomatedMarketMakerPair(DEAD_ADDRESS, true));
   });
 
-    it("should start busd liquidity", async function () {
-        await busdContract
-                .connect(busdHotWallet)
-                .transfer(owner.address, expandTo18Decimals(1000000));
+  it("should start busd liquidity", async function () {
+    await busdContract
+      .connect(busdHotWallet)
+      .transfer(owner.address, expandTo18Decimals(1000000));
 
-        const balanceBusdOwner = await busdContract.balanceOf(owner.address);
-        expect(balanceBusdOwner).to.equal(expandTo18Decimals(1000000));
-    });
+    const balanceBusdOwner = await busdContract.balanceOf(owner.address);
+    expect(balanceBusdOwner).to.equal(expandTo18Decimals(1000000));
+  });
 
-    it("should transfer liquidity tokens to designated liquidity address", async function () {
-        //how to get liquidity token address?
-    });
+  it("should transfer liquidity tokens to designated liquidity address", async function () {
+    //how to get liquidity token address?
+  });
 
-    // procurar como adicionar BUSD para cá
-    /*
+  // procurar como adicionar BUSD para cá
+  /*
     it("Should be able to create a new pair", async function () {
         await contract._swapTokensForBNB(100);
     });
