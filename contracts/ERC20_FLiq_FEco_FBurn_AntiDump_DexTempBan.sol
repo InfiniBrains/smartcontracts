@@ -70,6 +70,9 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     // @dev antidump mechanics the total max value of the extra fees
     uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
 
+    // @dev the total max value of the fees
+    uint256 private numTokensSellToAddToLiquidity = 0; // 500 tokens
+
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
 
@@ -87,6 +90,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         liquidityAddress = DEAD_ADDRESS;
 
         _mint(owner(), totalSupply);
+
+        numTokensSellToAddToLiquidity = totalSupply.mul(1 * 10**12).div(10 ** decimals()); // 0.000001% of total supply
 
         // Create a uniswap pair for this new token
         dexRouter = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
@@ -335,17 +340,16 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
                 }
 
-                if (liquidityFee > 0) {
+                // liquidity fee does not apply when buying tokens from dex if lp cashback is on. _swapAndLiquify fails if from == dexPair
+                if (liquidityFee > 0 && !(automatedMarketMakerPairs[from] && liquidityAddress == DEAD_ADDRESS)) {
                     tokensToLiquidity = amount.mul(liquidityFee).div(10 ** decimals());
                     super._transfer(from, address(this), tokensToLiquidity);
-                    if(liquidityAddress == DEAD_ADDRESS) { // lp token returns to the wallet as cashback
-                        if(automatedMarketMakerPairs[to]) // sell, so the wallet is the "from"
-                            _swapAndLiquify(tokensToLiquidity, from);
-                        else // buying, so the wallet is the "to"
-                            _swapAndLiquify(tokensToLiquidity, to);
-                    }
-                    else // lp token goes to the company
-                        _swapAndLiquify(tokensToLiquidity, liquidityAddress);
+
+                    bool overMinTokenBalance = balanceOf(address(this)) >= numTokensSellToAddToLiquidity;
+                    if(liquidityAddress == DEAD_ADDRESS) // lp token returns to the wallet as cashback
+                        _swapAndLiquify(tokensToLiquidity, from);
+                    else if (from != dexPair && overMinTokenBalance) // swapAndLiquify only if selling tokens to dex
+                        _swapAndLiquify(numTokensSellToAddToLiquidity, liquidityAddress); // lp token goes to the company 
                 }
             }
 
@@ -354,7 +358,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
                 super._transfer(from, DEAD_ADDRESS, tokensToBurn);
             }
 
-            uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
+            uint256 amountMinusFees = 0;
+            if (automatedMarketMakerPairs[from] && liquidityAddress == DEAD_ADDRESS) { // liquidity fee off
+                amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToBurn);
+            } else { // liquidity fee on
+                amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
+            }
             super._transfer(from, to, amountMinusFees);
         }
     }
