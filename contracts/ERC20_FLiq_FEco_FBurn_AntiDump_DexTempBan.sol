@@ -12,6 +12,7 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockTransactions.sol";
+import "./WithdrawableOwnable.sol";
 
 /**
 * Features:
@@ -24,7 +25,7 @@ import "./TimeLockTransactions.sol";
 *   Time lock dex transactions.
 *   Prevent people from creating peers without company authorization.
 */
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions {
+contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions, WithdrawableOwnable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -385,34 +386,5 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     event EcosystemFeeUpdated(uint256 indexed fee);
     event LiquidityFeeUpdated(uint256 indexed fee);
     event BurnFeeUpdated(uint256 indexed fee);
-    event BurnFeeLimitUpdated(uint256 indexed limit);
     event AntiDumpThresholdUpdated(uint256 indexed threshold);
-    event LiquidityStarted(address indexed routerAddress, address indexed pairAddress);
-
-    function withdraw() onlyOwner public {
-        uint256 balance = address(this).balance;
-        Address.sendValue(payable(msg.sender), balance);
-    }
-
-    /**
-     * @dev Withdraw any ERC20 token from this contract
-     * @param tokenAddress ERC20 token to withdraw
-     * @param to receiver address
-     * @param amount amount to withdraw
-     */
-    function withdrawERC20(
-        address tokenAddress,
-        address to,
-        uint256 amount
-    ) external virtual onlyOwner {
-        require(tokenAddress.isContract(), "ERC20 token address must be a contract");
-
-        IERC20 tokenContract = IERC20(tokenAddress);
-        require(
-            tokenContract.balanceOf(address(this)) >= amount,
-            "You are trying to withdraw more funds than available"
-        );
-
-        require(tokenContract.transfer(to, amount), "Fail on transfer");
-    }
 }
