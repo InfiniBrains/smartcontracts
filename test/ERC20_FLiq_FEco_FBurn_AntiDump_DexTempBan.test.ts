@@ -39,9 +39,11 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
   let address2: SignerWithAddress;
   let address3: SignerWithAddress;
   let address4: SignerWithAddress;
+  let tokenGiver: SignerWithAddress;
 
   before(async function () {
-    [owner, address1, address2, address3, address4] = await ethers.getSigners();
+    [owner, address1, address2, address3, address4, tokenGiver] =
+      await ethers.getSigners();
 
     await network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -150,6 +152,11 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
 
   describe("after liquidity is added", function () {
     beforeEach(async function () {
+      tokenGiver.sendTransaction({
+        to: owner.address,
+        value: expandTo18Decimals(500),
+      });
+
       await contract.setBurnFee(0);
       await contract.setEcosystemFee(0);
       await contract.setLiquidityFee(0);
