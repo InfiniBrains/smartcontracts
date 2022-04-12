@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./WithdrawableOwnable.sol";
 
-contract BatchNftSender is Ownable, ReentrancyGuard  {
+contract BatchNftSender is WithdrawableOwnable  {
     address private bankWallet;
 
     constructor () {
@@ -22,7 +23,7 @@ contract BatchNftSender is Ownable, ReentrancyGuard  {
     }
     event SetBankWallet(address addr);
 
-    function transferERC721(address token, uint256[] memory ids) nonReentrant external {
+    function SendERC721ToBank(address token, uint256[] memory ids) nonReentrant external {
         IERC721 nftContract = IERC721(token);
         require(nftContract.isApprovedForAll(_msgSender(),address(this)), "BatchNftSender: not approved");
 
