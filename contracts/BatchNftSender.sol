@@ -16,7 +16,7 @@ contract BatchNftSender is Ownable, ReentrancyGuard  {
         bankWallet = owner();
     }
 
-    function setBankWallet(address addr) onlyOwner {
+    function setBankWallet(address addr) onlyOwner public {
         bankWallet = addr;
         emit SetBankWallet(addr);
     }
@@ -24,11 +24,11 @@ contract BatchNftSender is Ownable, ReentrancyGuard  {
 
     function transferERC721(address token, uint256[] memory ids) nonReentrant external {
         IERC721 nftContract = IERC721(token);
-        require(nftContract.isApprovedForAll(_msgSender(),this), "BatchNftSender: not approved");
+        require(nftContract.isApprovedForAll(_msgSender(),address(this)), "BatchNftSender: not approved");
 
         for(uint256 i = 0; i < ids.length; i++)
             nftContract.safeTransferFrom(_msgSender(),bankWallet,ids[i]);
         emit TransferERC721(token, _msgSender(), bankWallet, ids);
     }
-    event TransferERC721(address token, address form, address to, uint256[] memory ids);
+    event TransferERC721(address token, address form, address to, uint256[] ids);
 }
