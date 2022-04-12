@@ -12,7 +12,7 @@ import { HardhatNetworkUserConfig } from "hardhat/types/config";
 
 dotenv.config({ path: resolve(__dirname, "./.env") });
 
-const mnemonic = process.env.MNEMONIC || "";
+let mnemonic = process.env.MNEMONIC || "";
 const privatekey = process.env.PRIVATEKEY || "";
 
 let wallet;
@@ -23,11 +23,11 @@ if (mnemonic) {
   wallet = new Wallet(privatekey);
 } else {
   console.warn(
-      "Please set MNEMONIC or PRIVATEKEY in a .env file. I create one random seed here for you"
+    "Please set MNEMONIC or PRIVATEKEY in a .env file. I create one random seed here for you"
   );
-  const mnemo = Wallet.createRandom().mnemonic.phrase;
-  console.warn("RANDOM MNEMONIC used: " + mnemo);
-  wallet = Wallet.fromMnemonic(mnemo);
+  mnemonic = Wallet.createRandom().mnemonic.phrase;
+  console.warn("RANDOM MNEMONIC used: " + mnemonic);
+  wallet = Wallet.fromMnemonic(mnemonic);
 }
 
 console.log("Using wallet with address: " + wallet.address);
@@ -51,13 +51,13 @@ function getForkingSettings() {
 
   if (url == null) {
     console.warn(
-        "........................................................................"
+      "........................................................................"
     );
     console.warn(
-        "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
+      "you need to set CHAINSTACK_PROVIDER to fork the chain and test properly."
     );
     console.warn(
-        "........................................................................"
+      "........................................................................"
     );
     ret = { accounts: { mnemonic } };
   } else {
