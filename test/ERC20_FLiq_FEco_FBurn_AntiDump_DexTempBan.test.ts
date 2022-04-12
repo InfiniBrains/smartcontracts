@@ -206,74 +206,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       ).to.emit(contract, "Transfer");
     });
 
-    it("Should not charge liquidity fee when buying tokens from dex if lp cashback is on", async function () {
-      await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
-
-      const amountsOut = await router.getAmountsOut(utils.parseEther("10"), [
-        WETH,
-        contract.address,
-      ]);
-
-      await router
-        .connect(address1)
-        .swapExactETHForTokensSupportingFeeOnTransferTokens(
-          0,
-          [WETH, contract.address],
-          address4.address,
-          ethers.constants.MaxUint256,
-          { value: utils.parseEther("10") }
-        );
-
-      expect(await contract.balanceOf(address4.address)).to.equal(
-        amountsOut[amountsOut.length - 1]
-      );
-    });
-
-    it("Should swapAndLiquify only when selling to dex", async function () {
-      await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
-      await contract.setLiquidityAddress(address4.address);
-
-      const amountsOut = await router.getAmountsOut(utils.parseEther("10"), [
-        WETH,
-        contract.address,
-      ]);
-
-      await router
-        .connect(address1)
-        .swapExactETHForTokensSupportingFeeOnTransferTokens(
-          0,
-          [WETH, contract.address],
-          address1.address,
-          ethers.constants.MaxUint256,
-          { value: utils.parseEther("10") }
-        );
-
-      expect(await contract.balanceOf(contract.address)).to.equal(
-        amountsOut[amountsOut.length - 1].div(100)
-      );
-
-      await contract.transfer(address2.address, utils.parseEther("2000"));
-
-      await contract
-        .connect(address2)
-        .approve(router.address, utils.parseEther("2000"));
-
-      await router
-        .connect(address2)
-        .swapExactTokensForETHSupportingFeeOnTransferTokens(
-          utils.parseEther("2000"),
-          0,
-          [contract.address, WETH],
-          address2.address,
-          ethers.constants.MaxUint256
-        );
-
-      expect(await contract.balanceOf(contract.address)).to.be.lt(
-        utils.parseEther("10")
-      );
-    });
-
-    it("liquidityAddress should receive cakes", async function () {
+    it("liquidityAddress should receive cakes on sell", async function () {
       await contract
         .connect(owner)
         .setEcosystemFee(ethers.utils.parseEther("0"));
@@ -315,7 +248,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expect(initialReserves).lt(finalReserves);
     });
 
-    it("user should receive cakes as cashback", async function () {
+    it("user should receive cakes as cashback on sell", async function () {
       await contract
         .connect(owner)
         .setLiquidityFee(ethers.utils.parseEther("0.1"));
@@ -347,6 +280,142 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       );
 
       expect(initialCakeBalance).lt(finalCakeBalance);
+    });
+
+    describe("liquidity fee", function () {
+      describe("buy from dex", function () {
+        it("Should send liquidity fee to token contract", async function () {
+          await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
+
+          const amountsOut = await router.getAmountsOut(
+            utils.parseEther("10"),
+            [WETH, contract.address]
+          );
+
+          await router
+            .connect(address1)
+            .swapExactETHForTokensSupportingFeeOnTransferTokens(
+              0,
+              [WETH, contract.address],
+              address4.address,
+              ethers.constants.MaxUint256,
+              { value: utils.parseEther("10") }
+            );
+
+          expect(await contract.balanceOf(address4.address)).to.equal(
+            amountsOut[amountsOut.length - 1].sub(
+              amountsOut[amountsOut.length - 1].div(100)
+            )
+          );
+
+          expect(await contract.balanceOf(contract.address)).to.equal(
+            amountsOut[amountsOut.length - 1].div(100)
+          );
+        });
+      });
+
+      describe("selling to dex", function () {
+        it("Should not swapAndLiqufy if amount to liquidity is less then numTokensSellToAddToLiquidity and lpAddress is set", async function () {
+          await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
+          await contract.setLiquidityAddress(address4.address);
+
+          const initialCakeBalance = await pairContract.balanceOf(
+            await contract.liquidityAddress()
+          );
+
+          await contract
+            .connect(address1)
+            .approve(
+              router.address,
+              (await contract.numTokensSellToAddToLiquidity()).mul(10)
+            );
+
+          await router
+            .connect(address1)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              (await contract.numTokensSellToAddToLiquidity()).mul(10),
+              0,
+              [contract.address, WETH],
+              address1.address,
+              ethers.constants.MaxUint256
+            );
+
+          const finalCakeBalance = await pairContract.balanceOf(
+            await contract.liquidityAddress()
+          );
+
+          expect(await contract.balanceOf(contract.address)).to.be.equal(
+            (await contract.numTokensSellToAddToLiquidity()).div(10)
+          );
+          expect(initialCakeBalance).to.be.equal(finalCakeBalance);
+        });
+
+        it("Should swapAndLiquify all contract balance to dex if lpAddress is set", async function () {
+          await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
+          await contract.setLiquidityAddress(address4.address);
+
+          const initialCakeBalance = await pairContract.balanceOf(
+            await contract.liquidityAddress()
+          );
+
+          await contract
+            .connect(address1)
+            .approve(
+              router.address,
+              (await contract.numTokensSellToAddToLiquidity()).mul(100)
+            );
+
+          await router
+            .connect(address1)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              (await contract.numTokensSellToAddToLiquidity()).mul(100),
+              0,
+              [contract.address, WETH],
+              address1.address,
+              ethers.constants.MaxUint256
+            );
+
+          const finalCakeBalance = await pairContract.balanceOf(
+            await contract.liquidityAddress()
+          );
+
+          expect(await contract.balanceOf(contract.address)).to.be.lt(
+            await contract.numTokensSellToAddToLiquidity()
+          );
+          expect(initialCakeBalance).to.be.lt(finalCakeBalance);
+        });
+
+        it("Should swapAndLiquify tokens to liquidit if lpAddress is not set", async function () {
+          await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
+
+          const initialCakeBalance = await pairContract.balanceOf(
+            address1.address
+          );
+
+          await contract
+            .connect(address1)
+            .approve(router.address, utils.parseEther("1000"));
+
+          await router
+            .connect(address1)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(
+              utils.parseEther("1000"),
+              0,
+              [contract.address, WETH],
+              address1.address,
+              ethers.constants.MaxUint256
+            );
+
+          const finalCakeBalance = await pairContract.balanceOf(
+            address1.address
+          );
+
+          expect(await contract.balanceOf(contract.address)).to.be.lt(
+            utils.parseEther("1000").div(100)
+          );
+          expect(initialCakeBalance).to.be.lt(finalCakeBalance);
+        });
+      });
     });
 
     describe("anti dump", function () {

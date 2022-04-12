@@ -72,7 +72,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
 
     // @dev the total max value of the fees
-    uint256 private numTokensSellToAddToLiquidity = 0;
+    uint256 public numTokensSellToAddToLiquidity = 0;
 
     // @dev mapping of excluded from fees elements
     mapping(address => bool) public isExcludedFromFees;
