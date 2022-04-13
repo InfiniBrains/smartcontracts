@@ -13,6 +13,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockTransactions.sol";
 import "./WithdrawableOwnable.sol";
+import "./AntiDumpOwnable.sol";
 
 /**
 * Features:
@@ -24,7 +25,7 @@ import "./WithdrawableOwnable.sol";
 *   Time lock dex transactions.
 *   Prevent people from creating dexpair without company authorization.
 */
-contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions, WithdrawableOwnable {
+contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions, WithdrawableOwnable, AntiDumpOwnable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -57,18 +58,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
 
     // @dev just to simplify to the user, the total fees
     uint256 public totalFees = 0;
-
-    // @dev antidump mechanics
-    uint256 public antiDumpThreshold = 5 * 10**15; // 0.5%
-
-    // @dev antidump mechanics
-    uint256 public antiDumpFee = 25 * 10**16; // 25%
-
-    // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**15; // 0.1%
-
-    // @dev antidump mechanics the total max value of the extra fees
-    uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
 
     // @dev the total max value of the fees
     uint256 public numTokensSellToAddToLiquidity = 0;
@@ -192,12 +181,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit BurnFeeUpdated(newFee);
     }
 
-    function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
-        require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "The company cannot set abusive threshold");
-        antiDumpThreshold = newThreshold;
-        emit AntiDumpThresholdUpdated(newThreshold);
-    }
-
     function setLockTime(uint timeBetweenTransactions) external onlyOwner {
         _setLockTime(timeBetweenTransactions);
     }
@@ -273,56 +256,11 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         _;
     }
 
-    function getTokenVolumeFromPair(address pairAddr) internal view returns (uint256){
-        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
-        (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairAddr).getReserves();
-
-        if(pair.token0() == address(this))
-            return reserve0;
-        else if(pair.token1() == address(this))
-            return reserve1;
-        else
-            revert("not a pair");
-    }
-
     function timeLockCheck(address from, address to) internal {
         if(automatedMarketMakerPairs[to])  // selling tokens
             lockIfCanOperateAndRevertIfNotAllowed(from);
         else if(automatedMarketMakerPairs[from]) // buying tokens
             lockIfCanOperateAndRevertIfNotAllowed(to);
-    }
-
-    function setAntiDump(uint256 newThreshold, uint256 newFee) external onlyOwner {
-        require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "new threshold is not acceptable");
-        require(newFee<=ANTI_DUMP_FEE_LIMIT, "new fee is not acceptable");
-
-        antiDumpThreshold = newThreshold;
-        antiDumpFee = newFee;
-
-        emit SetAntiDump(newThreshold, newFee);
-    }
-    event SetAntiDump(uint256 newThreshold, uint256 newfee);
-
-    function antiDumpCheck(address from, address to, uint256 amount) internal view returns(uint256) {
-        address pair = DEAD_ADDRESS;
-
-        // we dont need "from" for now, but, we will keep it here for completeness
-
-        // check if the transaction direction is sell token
-        if(automatedMarketMakerPairs[to])
-            pair = to;
-//        else if(automatedMarketMakerPairs[from])
-//            pair = from;
-
-        if(pair!=DEAD_ADDRESS) {
-            uint256 volume = getTokenVolumeFromPair(pair);
-            if (volume > 0) {
-                uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-                if (amount >= maxVolume)
-                    return antiDumpFee;
-            }
-        }
-        return 0;
     }
 
     function _transfer(
@@ -343,7 +281,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         } else {
             // timelock dex transactions
             timeLockCheck(from,to);
-            uint256 extraFee = antiDumpCheck(from, to, amount);
+            uint256 extraFee = 0;
             uint256 tokenToEcoSystem=0;
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
@@ -352,8 +290,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             // automatedMarketMakerPairs[from] -> buy tokens on dex
             // automatedMarketMakerPairs[to]   -> sell tokens on dex
             if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]) {
+                // apply extra fee only on token sell operations
+                if(automatedMarketMakerPairs[to])
+                    extraFee = getAntiDumpFee(to,amount);
+
                 // apply ecoSystemFee if enabled
-                if (ecoSystemFee > 0) {
+                if (ecoSystemFee > 0 || extraFee > 0) {
                     tokenToEcoSystem = amount.mul(ecoSystemFee.add(extraFee)).div(10 ** decimals());
                     super._transfer(from, ecoSystemAddress, tokenToEcoSystem);
                 }
@@ -407,5 +349,5 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     event EcosystemFeeUpdated(uint256 indexed fee);
     event LiquidityFeeUpdated(uint256 indexed fee);
     event BurnFeeUpdated(uint256 indexed fee);
-    event AntiDumpThresholdUpdated(uint256 indexed threshold);
+
 }
