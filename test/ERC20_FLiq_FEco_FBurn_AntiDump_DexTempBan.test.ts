@@ -150,6 +150,40 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     );
   });
 
+  it("Should charge burn fees on transfer", async function () {
+    await contract.setBurnFee(0);
+    await contract.setEcosystemFee(0);
+    await contract.setBurnFee(utils.parseEther("0.01"));
+
+    await contract.transfer(address1.address, utils.parseEther("1000"));
+
+    await contract
+      .connect(address1)
+      .transfer(address2.address, utils.parseEther("1000"));
+
+    expect(await contract.balanceOf(address2.address)).to.equal(
+      utils.parseEther("990")
+    );
+  });
+
+  it("Owner should not be able to set a new limit to add to liquidity lower than 0.000001% of total supply", async function () {
+    await expect(
+      contract.setNumTokensSellToAddToLiquidity(utils.parseEther("999"))
+    ).to.be.revertedWith("new limit is too low");
+
+    expect(await contract.numTokensSellToAddToLiquidity()).to.equal(
+      utils.parseEther("1000")
+    );
+  });
+
+  it("Owner should be able to set new limit to add to liquidity", async function () {
+    await contract.setNumTokensSellToAddToLiquidity(utils.parseEther("100000"));
+
+    expect(await contract.numTokensSellToAddToLiquidity()).to.equal(
+      utils.parseEther("100000")
+    );
+  });
+
   describe("after liquidity is added", function () {
     beforeEach(async function () {
       tokenGiver.sendTransaction({
