@@ -181,10 +181,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit BurnFeeUpdated(newFee);
     }
 
-    function setLockTime(uint timeBetweenTransactions) external onlyOwner {
-        _setLockTime(timeBetweenTransactions);
-    }
-
     function _updateTotalFee() internal {
         totalFees = liquidityFee.add(burnFee).add(ecoSystemFee);
     }
@@ -332,11 +328,6 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         }
     }
 
-    // @dev unlock a wallet for one transaction
-    function unlockWallet(address wallet) public onlyOwner {
-        _unlockWallet(wallet);
-    }
-
     event ExcludeFromFees(address indexed account, bool isExcluded);
     event LiquidityAddressUpdated(address indexed liquidityAddress);
     event EcoSystemAddressUpdated(address indexed ecoSystemAddress);
@@ -349,5 +340,4 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     event EcosystemFeeUpdated(uint256 indexed fee);
     event LiquidityFeeUpdated(uint256 indexed fee);
     event BurnFeeUpdated(uint256 indexed fee);
-
 }

@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.9;
 
-//import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TimeLockTransactions {
+contract TimeLockTransactions is Ownable {
     mapping (address => uint) private walletToTime;
 
     uint private constant MAX_ALLOWED_TIME = 1 days;
@@ -37,12 +37,19 @@ contract TimeLockTransactions {
         lockToOperate(addr);
     }
 
-    // @dev if you are inheriting this contract, you should expose this function and protect it via onlyowner or roles
     function _setLockTime(uint timeBetweenTransactions) internal {
         require(timeBetweenTransactions <= MAX_ALLOWED_TIME, "TimeLock: max temp ban greater than the allowed");
         _lockTime = timeBetweenTransactions;
         emit SetLockTimeEvent(timeBetweenTransactions);
     }
-
     event SetLockTimeEvent(uint timeBetweenPurchases);
+
+    function setLockTime(uint timeBetweenTransactions) external onlyOwner {
+        _setLockTime(timeBetweenTransactions);
+    }
+
+    // @dev unlock a wallet for one transaction
+    function unlockWallet(address wallet) public onlyOwner {
+        _unlockWallet(wallet);
+    }
 }

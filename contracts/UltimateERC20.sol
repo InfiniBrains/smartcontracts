@@ -577,10 +577,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         _;
     }
 
-    function setLockTime(uint timeBetweenTransactions) public onlyOwner {
-        _setLockTime(timeBetweenTransactions);
-    }
-
     function _transfer(
         address from,
         address to,
