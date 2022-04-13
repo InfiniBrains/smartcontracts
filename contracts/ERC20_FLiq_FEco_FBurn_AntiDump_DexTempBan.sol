@@ -20,10 +20,9 @@ import "./WithdrawableOwnable.sol";
 *   Enterprise ecosystem fee. (Company configurable)
 *   Burn rate. (Company configurable up to a certain limit)
 *   Total fees capped.
-*   Upgradable to next token.
-*   Dex volume based anti-whale fees. (Configurable to a certain extent by the company)
+*   Dex volume based anti-whale anti dump fees. (Configurable to a certain extent by the company)
 *   Time lock dex transactions.
-*   Prevent people from creating peers without company authorization.
+*   Prevent people from creating dexpair without company authorization.
 */
 contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransactions, WithdrawableOwnable {
     using SafeMath for uint256;
@@ -142,23 +141,27 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
 
     receive() external payable {}
 
+    // @dev exclude an account to be taxed
     function excludeFromFees(address account, bool excluded) public onlyOwner {
         require(isExcludedFromFees[account] != excluded, "Already set");
         isExcludedFromFees[account] = excluded;
         emit ExcludeFromFees(account, excluded);
     }
 
+    // @dev internal use to checkif the total fee was reached
     function checkFeesChanged(uint256 _oldFee, uint256 _newFee) internal view {
         uint256 _fees = ecoSystemFee.add(liquidityFee).add(burnFee).add(_newFee).sub(_oldFee);
         require(_fees <= FEE_LIMIT, "Fees exceeded max limitation");
     }
 
+    // @dev set ecosystem address to receive fees
     function setEcoSystemAddress(address newAddress) public onlyOwner {
         require(ecoSystemAddress != newAddress, "EcoSystem address already setted");
         ecoSystemAddress = newAddress;
         emit EcoSystemAddressUpdated(newAddress);
     }
 
+    // @dev set ecosystem tax to receive fees
     function setEcosystemFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(ecoSystemFee, newFee);
         ecoSystemFee = newFee;
@@ -166,12 +169,14 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit EcosystemFeeUpdated(newFee);
     }
 
+    // @dev set liquidity address to receive fees, id dead, the lp token goes to the user
     function setLiquidityAddress(address newAddress) public onlyOwner {
         require(liquidityAddress != newAddress, "Liquidity address already setted");
         liquidityAddress = newAddress;
         emit LiquidityAddressUpdated(newAddress);
     }
 
+    // @dev set liquidity tax
     function setLiquidityFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(liquidityFee, newFee);
         liquidityFee = newFee;
@@ -179,6 +184,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit LiquidityFeeUpdated(newFee);
     }
 
+    // @set the liquidity fee
     function setBurnFee(uint256 newFee) public onlyOwner {
         checkFeesChanged(burnFee, newFee);
         burnFee = newFee;
@@ -342,6 +348,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             uint256 tokensToLiquidity=0;
             uint256 tokensToBurn=0;
 
+            // dex based fees
             // automatedMarketMakerPairs[from] -> buy tokens on dex
             // automatedMarketMakerPairs[to]   -> sell tokens on dex
             if(automatedMarketMakerPairs[to] || automatedMarketMakerPairs[from]) {
@@ -374,7 +381,8 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             // apply burn fees always
             if (burnFee > 0) {
                 tokensToBurn = amount.mul(burnFee).div(10 ** decimals());
-                super._transfer(from, DEAD_ADDRESS, tokensToBurn);
+//                super._burn(from, tokensToBurn);
+                super._transfer(from, DEAD_ADDRESS, tokensToBurn); // todo: probably the ERC20burnable should be cleaner
             }
 
             uint256 amountMinusFees = amount.sub(tokenToEcoSystem).sub(tokensToLiquidity).sub(tokensToBurn);
