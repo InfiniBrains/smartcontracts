@@ -278,17 +278,17 @@ describe("UltimateCoin", function () {
           .transfer(address1.address, expandTo9Decimals("500"));
       });
 
-      it("Check gas price",async function(){
-        await contract.connect(owner).setTaxFeePercent(100,100);
-        await contract.connect(owner).setEcoSystemFeePercent(100, 100);
-        await contract.connect(owner).setBurnFeePercent(100, 100);
-        await contract.connect(owner).setLiquidityFeePercent(100,100);
-
-        console.log("ultimate");
-        console.log(await contract
-            .connect(address1).estimateGas
-            .transfer(address2.address, expandTo9Decimals("500")));
-      });
+      // it("Check gas price",async function(){
+      //   await contract.connect(owner).setTaxFeePercent(100,100);
+      //   await contract.connect(owner).setEcoSystemFeePercent(100, 100);
+      //   await contract.connect(owner).setBurnFeePercent(100, 100);
+      //   await contract.connect(owner).setLiquidityFeePercent(100,100);
+      //
+      //   console.log("ultimate");
+      //   console.log(await contract
+      //       .connect(address1).estimateGas
+      //       .transfer(address2.address, expandTo9Decimals("500")));
+      // });
 
       it("Should charge reflect fee", async function () {
         expect(await contract.balanceOf(owner.address)).to.equal(

@@ -30,7 +30,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
   let router: IUniswapV2Router02;
   let factory: Contract;
   let busdContract: Contract;
-  let busdHotWalletAddress: string =
+  const busdHotWalletAddress: string =
     "0x8894e0a0c962cb723c1976a4421c95949be2d4e3";
   let busdHotWallet: SignerWithAddress;
   let pairContract: Contract;
@@ -50,23 +50,23 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       params: [busdHotWalletAddress],
     });
 
-    //BUSD contract
+    // BUSD contract
     busdHotWallet = await ethers.getSigner(busdHotWalletAddress);
     busdContract = new ethers.Contract(BUSD_ADDRESS, busdAbi, busdHotWallet);
 
     let bal = await ethers.provider.getBalance(owner.address);
 
-    //ROUTER CONTRACT
+    // ROUTER CONTRACT
     router = <IUniswapV2Router02>(
       new ethers.Contract(ROUTER_ADDRESS, abi, owner)
     );
     WETH = await router.WETH();
 
-    //FACTORY CONTRACT
-    let factoryAddress = await router.factory();
+    // FACTORY CONTRACT
+    const factoryAddress = await router.factory();
     factory = new ethers.Contract(factoryAddress, factoryAbi, owner);
 
-    //BNB FUNDING
+    // BNB FUNDING
     await busdHotWallet.sendTransaction({
       to: owner.address,
       value: expandTo18Decimals(100),
@@ -84,8 +84,8 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
       expandTo18Decimals(1000000000)
     );
     contract = await contract.deployed();
-    let pairAddress = await factory.getPair(contract.address, WETH);
-    //PAIR CONTRACT
+    const pairAddress = await factory.getPair(contract.address, WETH);
+    // PAIR CONTRACT
     pairContract = new ethers.Contract(pairAddress, pairAbi, owner);
   });
 
@@ -290,6 +290,20 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     });
 
     describe("liquidity fee", function () {
+      describe("test liquidity fee limits", async function () {
+        await expect(
+          contract.setNumTokensSellToAddToLiquidity(
+            ethers.utils.parseEther("0")
+          )
+        ).to.be.revertedWith("new limit is too low");
+
+        await expect(
+          contract.setNumTokensSellToAddToLiquidity(
+            ethers.utils.parseEther("100")
+          )
+        ).to.be.revertedWith("new limit is too low");
+      });
+
       describe("buy from dex", function () {
         it("Should send liquidity fee to token contract", async function () {
           await contract.setLiquidityFee(ethers.utils.parseEther("0.01"));
@@ -459,25 +473,25 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
         );
       });
 
-      it("Check gas price", async function () {
-        await contract
-          .connect(owner)
-          .setEcosystemFee(ethers.utils.parseEther("0.01"));
-        await contract
-          .connect(owner)
-          .setBurnFee(ethers.utils.parseEther("0.01"));
-        await contract
-          .connect(owner)
-          .setLiquidityFee(ethers.utils.parseEther("0.01"));
-        await contract.connect(owner).setLiquidityAddress(owner.address);
-
-        console.log("erc20 with fees");
-        console.log(
-          await contract
-            .connect(address1)
-            .estimateGas.transfer(address2.address, expandTo9Decimals("500"))
-        );
-      });
+      // it("Check gas price", async function () {
+      //   await contract
+      //     .connect(owner)
+      //     .setEcosystemFee(ethers.utils.parseEther("0.01"));
+      //   await contract
+      //     .connect(owner)
+      //     .setBurnFee(ethers.utils.parseEther("0.01"));
+      //   await contract
+      //     .connect(owner)
+      //     .setLiquidityFee(ethers.utils.parseEther("0.01"));
+      //   await contract.connect(owner).setLiquidityAddress(owner.address);
+      //
+      //   console.log("erc20 with fees");
+      //   console.log(
+      //     await contract
+      //       .connect(address1)
+      //       .estimateGas.transfer(address2.address, expandTo9Decimals("500"))
+      //   );
+      // });
     });
 
     describe("timelock dex", async function () {
@@ -565,7 +579,7 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
   });
 
   it("should transfer liquidity tokens to designated liquidity address", async function () {
-    //how to get liquidity token address?
+    // how to get liquidity token address?
   });
 
   // procurar como adicionar BUSD para cá

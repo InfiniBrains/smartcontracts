@@ -29,10 +29,10 @@ describe("UltimateCoin", function () {
         contract = await contract.deployed();
     });
 
-    it("Check gas price",async function(){
-        console.log("erc20 without fees");
-        console.log(await contract
-            .connect(owner).estimateGas
-            .transfer(address1.address, expandTo9Decimals("500")));
-    });
+    // it("Check gas price",async function(){
+    //     console.log("erc20 without fees");
+    //     console.log(await contract
+    //         .connect(owner).estimateGas
+    //         .transfer(address1.address, expandTo9Decimals("500")));
+    // });
 });

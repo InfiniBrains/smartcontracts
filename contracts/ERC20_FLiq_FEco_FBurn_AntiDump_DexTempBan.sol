@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "hardhat/console.sol";
-
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
@@ -102,12 +100,12 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
         emit ExcludeFromFees(DEAD_ADDRESS, true);
     }
 
-    function setMinNumTokensSellToAddToLiquidity(uint256 newLimit) external onlyOwner {
+    function setNumTokensSellToAddToLiquidity(uint256 newLimit) external onlyOwner {
         require(newLimit >= totalSupply().div(10**6), "new limit is too low");
         numTokensSellToAddToLiquidity = newLimit;
-        emit SetMinNumTokensSellToAddToLiquidity(newLimit);
+        emit SetNumTokensSellToAddToLiquidity(newLimit);
     }
-    event SetMinNumTokensSellToAddToLiquidity(uint256 newLimit);
+    event SetNumTokensSellToAddToLiquidity(uint256 newLimit);
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
         require(pair != dexPair, "default pair cannot be changed");
