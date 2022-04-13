@@ -150,6 +150,22 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     );
   });
 
+  it("Should charge burn fees on transfer", async function () {
+    await contract.setBurnFee(0);
+    await contract.setEcosystemFee(0);
+    await contract.setBurnFee(utils.parseEther("0.01"));
+
+    await contract.transfer(address1.address, utils.parseEther("1000"));
+
+    await contract
+      .connect(address1)
+      .transfer(address2.address, utils.parseEther("1000"));
+
+    expect(await contract.balanceOf(address2.address)).to.equal(
+      utils.parseEther("990")
+    );
+  });
+
   describe("after liquidity is added", function () {
     beforeEach(async function () {
       tokenGiver.sendTransaction({
