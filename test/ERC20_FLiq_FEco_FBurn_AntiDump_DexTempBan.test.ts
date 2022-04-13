@@ -166,6 +166,24 @@ describe("ERC20FLiqFEcoFBurnAntiDumpDexTempBan", function () {
     );
   });
 
+  it("Owner should not be able to set a new limit to add to liquidity lower than 0.000001% of total supply", async function () {
+    await expect(
+      contract.setNumTokensSellToAddToLiquidity(utils.parseEther("999"))
+    ).to.be.revertedWith("new limit is too low");
+
+    expect(await contract.numTokensSellToAddToLiquidity()).to.equal(
+      utils.parseEther("1000")
+    );
+  });
+
+  it("Owner should be able to set new limit to add to liquidity", async function () {
+    await contract.setNumTokensSellToAddToLiquidity(utils.parseEther("100000"));
+
+    expect(await contract.numTokensSellToAddToLiquidity()).to.equal(
+      utils.parseEther("100000")
+    );
+  });
+
   describe("after liquidity is added", function () {
     beforeEach(async function () {
       tokenGiver.sendTransaction({
