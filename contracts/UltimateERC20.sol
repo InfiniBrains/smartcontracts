@@ -93,11 +93,13 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
     address public _burnAddress;
 
+    // @dev which wallet will receive the ecosystem fee. If dead is used, it goes to the msgSender
+    address public liquidityAddress;
+
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled;
 
     bool private rentrancy_lock;
-
 
     uint256 public _maxTxAmount;
     uint256 private numTokensSellToAddToLiquidity;
@@ -115,18 +117,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         inSwapAndLiquify = true;
         _;
         inSwapAndLiquify = false;
-    }
-
-    // @dev ensures the route is excluded form fees
-    modifier ensureRouterIsExcluded(address _sender) {
-        if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
-            try IUniswapV2Router02(_sender).factory() returns (address factory) {
-                // pancakeswap router address
-                require(factory == uniswapFactoryAddress, "Wrong factory address");
-                _isExcludedFromFee[_sender] = true;
-            } catch {}
-        }
-        _;
     }
 
     modifier _checkIfPairIsAuthorized(address from, address to) {
@@ -156,7 +146,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
         _tTotal = 1000000000 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
-        _maxFee = 1000; // 10%
+        _maxFee = 2000; // 20%
 
         swapAndLiquifyEnabled = false;
 
@@ -164,6 +154,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         numTokensSellToAddToLiquidity = 50 * 10**_decimals;
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
+        liquidityAddress = _burnAddress;
 
         _rOwned[_msgSender()] = _rTotal;
 
@@ -467,6 +458,18 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
     event SetStakingFeeAddress(address _empty, address _default);
 
+    // @dev set liquidity address to receive fees, id dead, the lp token goes to the user
+    function setLiqudityFeeAddress(address newAddress) public onlyOwner {
+        require(liquidityAddress != newAddress, "Liquidity address already setted");
+        require(liquidityAddress == address(0), "Address Zero is not allowed");
+        includeInReward(liquidityAddress);
+        liquidityAddress = newAddress;
+        excludeFromReward(newAddress);
+        emit SetLiqudityFeeAddress(newAddress);
+    }
+
+    event SetLiqudityFeeAddress(address indexed liquidityAddress);
+
     function updateRouter(address _uniswapV2Router) public onlyOwner() {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
         emit UpdateRouter(_uniswapV2Router);
@@ -575,28 +578,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
-    // todo: make it a modifier
-    // todo: test this
-    modifier _checkIfPairIsAuthorized(address from, address to) {
-        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
-        if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
-            // todo: compare this with isrouter function
-            try IUniswapV2Pair(from).symbol() returns (string memory _value) {
-                if(compareStrings(_value, "Cake-LP")) // if the contract has symbol and the name is Cake-LP, it is a pancake pair
-                    revert("pair not allowed");
-            }
-            catch {}
-        }
-        if(Address.isContract(to) && !automatedMarketMakerPairs[to]) {
-            try IUniswapV2Pair(to).symbol() returns (string memory _value) {
-                if(compareStrings(_value, "Cake-LP"))
-                    revert("pair not allowed");
-            }
-            catch {}
-        }
-        _;
-    }
-
     function timeLockCheck(address from, address to) internal {
         if(automatedMarketMakerPairs[to])  // selling tokens
             lockIfCanOperateAndRevertIfNotAllowed(from);
@@ -611,7 +592,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         uint256 amount
     )
     private
-    ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly // todo: fix this (giving error when try to add liquidity)
     _checkIfPairIsAuthorized(from, to)
     {
         require(from != address(0), "BEP20: transfer from the zero address");
@@ -634,19 +614,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
             contractTokenBalance = _maxTxAmount;
         }
 
-        bool overMinTokenBalance = contractTokenBalance >= numTokensSellToAddToLiquidity;
-        if (
-            overMinTokenBalance &&
-            !inSwapAndLiquify &&
-            from != defaultPair &&
-            !automatedMarketMakerPairs[from] && // todo: verify this logic
-            swapAndLiquifyEnabled
-        ) {
-            contractTokenBalance = numTokensSellToAddToLiquidity;
-            //add liquidity
-            swapAndLiquify(contractTokenBalance);
-        }
-
         //indicates if fee should be deducted from transfer
         bool takeFee = true;
 
@@ -658,18 +625,15 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         bool isDefaultFee = true;
 
         if(takeFee) {
-            isDefaultFee = !_isExcludedFromFee[from];
-
-            if(_msgSender() != from) {
-                isDefaultFee = !_isExcludedFromFee[_msgSender()];
-            }
+            if(_msgSender() != from) isDefaultFee = !_isExcludedFromFee[_msgSender()];
+            else isDefaultFee = !_isExcludedFromFee[from];
         }
 
         //transfer amount, it will take tax, burn, liquidity fee
         _tokenTransfer(from, to, amount, isDefaultFee, takeFee);
     }
 
-    function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
+    function swapAndLiquify(uint256 contractTokenBalance, address cakeReceiver) private lockTheSwap {
         // split the contract balance into halves
         uint256 half = contractTokenBalance.div(2);
         uint256 otherHalf = contractTokenBalance.sub(half);
@@ -687,7 +651,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         uint256 newBalance = address(this).balance.sub(initialBalance);
 
         // add liquidity to uniswap
-        addLiquidity(otherHalf, newBalance);
+        addLiquidity(otherHalf, newBalance, cakeReceiver);
 
         // todo: inspect if some tokens still remains in the contract caused by accumulation of small slippages when addLiquidity
 
@@ -712,19 +676,18 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         );
     }
 
-    function addLiquidity(uint256 tokenAmount, uint256 bnbAmount) private {
+    function addLiquidity(uint256 tokenAmount, uint256 bnbAmount, address cakeReceiver) private {
         // approve token transfer to cover all possible scenarios
         _approve(address(this), address(uniswapV2Router), tokenAmount);
 
         // add the liquidity
-        uniswapV2Router.addLiquidityETH{value: bnbAmount}(
+        uniswapV2Router.addLiquidityETH{ value: bnbAmount }(
             address(this),
             tokenAmount,
-            0, // slippage is unavoidable
-            0, // slippage is unavoidable
-            owner(), // todo: test it! send the cake to the sender
-//            _msgSender(),
-            block.timestamp
+            0,
+            0,
+            cakeReceiver,
+            block.timestamp.add(300)
         );
         // todo: inspect if some tokens still remains in the contract - slippage problem
     }
@@ -734,7 +697,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         // check authorized time window
         // Sell is when the automatedMarketMakerPairs[recipient] is true. otherwise it is buy
         if(takeFee)
-            timeLockCheck(from,to);
+            timeLockCheck(sender, recipient);
 
         if(!takeFee)
             removeAllFee();
@@ -797,6 +760,18 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
     function _takeFees(address sender, FeeValues memory values, bool _isDefaultFee) private {
         _takeFee(sender, values.tLiquidity, address(this));
+
+        bool overMinTokenBalance = balanceOf(address(this)) >= numTokensSellToAddToLiquidity;
+        if (
+            overMinTokenBalance &&
+            !inSwapAndLiquify &&
+            !automatedMarketMakerPairs[sender] &&
+            swapAndLiquifyEnabled
+        ) {
+            //add liquidity
+            if(liquidityAddress != _burnAddress) swapAndLiquify(balanceOf(address(this)), liquidityAddress);
+            else swapAndLiquify(values.tLiquidity, sender);
+        }
 
         if(_isDefaultFee) {
             _takeFee(sender, values.tEcoSystem, _defaultFees.ecoSystem);
