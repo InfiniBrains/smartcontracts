@@ -618,8 +618,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
 
-        // todo: add costly fees if the amount is above the _maxTxAmount.
-        // todo: The more amount is bigger than _maxTxAmount, the more tax increases (linear)
         if(from != owner() && to != owner())
             require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
 
@@ -629,6 +627,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         // also, don't swap & liquify if sender is uniswap pair.
         uint256 contractTokenBalance = balanceOf(address(this));
 
+        // todo: add costly fees if the amount is above the _maxTxAmount.
+        // todo: apply extra fee on sell operation and send it to reflection
+        //if(automatedMarketMakerPairs[to]) extraFee = getAntiDumpFee(to,amount);
         if(contractTokenBalance >= _maxTxAmount) {
             contractTokenBalance = _maxTxAmount;
         }
