@@ -257,12 +257,25 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
             lockIfCanOperateAndRevertIfNotAllowed(to);
     }
 
+    // todo: read safemoon to understand why it is needed
+    modifier ensureRouterIsExcluded(address _sender) {
+        if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
+            try IUniswapV2Router02(_sender).factory() returns (address factory) {
+                // pancakeswap router address
+                require(factory == uniswapFactoryAddress, "Wrong factory address");
+                _isExcludedFromFee[_sender] = true;
+            } catch {}
+        }
+        _;
+    }
+
     function _transfer(
         address from,
         address to,
         uint256 amount
     ) internal override
     _checkIfPairIsAuthorized(from, to)
+    ensureRouterIsExcluded(_msgSender())
     {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");

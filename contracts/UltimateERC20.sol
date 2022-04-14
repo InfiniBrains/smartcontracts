@@ -24,8 +24,10 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./TimeLockTransactions.sol";
 
 import "hardhat/console.sol";
+import "./WithdrawableOwnable.sol";
+import "./AntiDumpOwnable.sol";
 
-contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, ReentrancyGuard {
+contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, ReentrancyGuard, WithdrawableOwnable, AntiDumpOwnable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -35,7 +37,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         uint256 stakingFee;
         address staking; // wallet para dividendos para detentores de HRS
         uint256 liquidityFee; // fee to add funds to the DEX
-        uint256 taxFee; // todo: is this to be used on reflection?
+        uint256 taxFee;
         uint256 burnFee;
     }
 
@@ -118,12 +120,30 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     // @dev ensures the route is excluded form fees
     modifier ensureRouterIsExcluded(address _sender) {
         if(!_isExcludedFromFee[_sender] && Address.isContract(_sender)) {
-            // todo: this test is too simple...
             try IUniswapV2Router02(_sender).factory() returns (address factory) {
                 // pancakeswap router address
                 require(factory == uniswapFactoryAddress, "Wrong factory address");
                 _isExcludedFromFee[_sender] = true;
             } catch {}
+        }
+        _;
+    }
+
+    modifier _checkIfPairIsAuthorized(address from, address to) {
+        // if the contract has symbol and the name is Cake-LP, it is a pancake pair
+        if(Address.isContract(from) && !automatedMarketMakerPairs[from]) {
+            try IUniswapV2Pair(from).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP"))
+                    revert("pair not allowed");
+            }
+            catch {}
+        }
+        if(Address.isContract(to) && !automatedMarketMakerPairs[to]) {
+            try IUniswapV2Pair(to).symbol() returns (string memory _value) {
+                if(compareStrings(_value, "Cake-LP"))
+                    revert("pair not allowed");
+            }
+            catch {}
         }
         _;
     }
@@ -577,15 +597,20 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         _;
     }
 
+    function timeLockCheck(address from, address to) internal {
+        if(automatedMarketMakerPairs[to])  // selling tokens
+            lockIfCanOperateAndRevertIfNotAllowed(from);
+        else if(automatedMarketMakerPairs[from]) // buying tokens
+            lockIfCanOperateAndRevertIfNotAllowed(to);
+    }
+
+
     function _transfer(
         address from,
         address to,
         uint256 amount
     )
     private
-//    preventBlacklisted(_msgSender(), "Address is blacklisted")
-//    preventBlacklisted(from, "From address is blacklisted")
-//    preventBlacklisted(to, "To address is blacklisted")
     ensureRouterIsExcluded(_msgSender()) // todo: improve this check bc it is costly // todo: fix this (giving error when try to add liquidity)
     _checkIfPairIsAuthorized(from, to)
     {
@@ -632,7 +657,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         bool isDefaultFee = true;
 
         if(takeFee) {
-            isDefaultFee = !_isExcludedFromFee[from]; // todo: test this
+            isDefaultFee = !_isExcludedFromFee[from];
 
             if(_msgSender() != from) {
                 isDefaultFee = !_isExcludedFromFee[_msgSender()];
@@ -696,8 +721,8 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
             tokenAmount,
             0, // slippage is unavoidable
             0, // slippage is unavoidable
-//            owner(), // todo: test it! send the cake to the sender
-            _msgSender(),
+            owner(), // todo: test it! send the cake to the sender
+//            _msgSender(),
             block.timestamp
         );
         // todo: inspect if some tokens still remains in the contract - slippage problem
@@ -707,16 +732,8 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     function _tokenTransfer(address sender, address recipient, uint256 amount, bool _isDefaultFee, bool takeFee) private {
         // check authorized time window
         // Sell is when the automatedMarketMakerPairs[recipient] is true. otherwise it is buy
-        if(takeFee){
-            if(automatedMarketMakerPairs[recipient]) { // todo: check if this logic is correct. TEST IT!
-                require(canOperate(sender), "the sender cannot operate yet");
-                lockToOperate(sender);
-            }
-            else {
-                require(canOperate(recipient), "the recipient cannot sell yet");
-                lockToOperate(recipient);
-            }
-        }
+        if(takeFee)
+            timeLockCheck(from,to);
 
         if(!takeFee)
             removeAllFee();
@@ -815,61 +832,4 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         _burnAddress = _newBurnAddress;
         excludeFromReward(_newBurnAddress);
     }
-
-    function withdraw() onlyOwner nonReentrant public {
-        uint256 balance = address(this).balance;
-        Address.sendValue(payable(msg.sender), balance);
-//        payable(msg.sender).transfer(balance);
-    }
-
-    /**
-     * @dev Withdraw any ERC20 token from this contract
-     * @param tokenAddress ERC20 token to withdraw
-     * @param to receiver address
-     * @param amount amount to withdraw
-     */
-    function withdrawERC20(
-        address tokenAddress,
-        address to,
-        uint256 amount
-    ) external virtual nonReentrant onlyOwner {
-        require(tokenAddress.isContract(), "ERC20 token address must be a contract");
-
-        IERC20 tokenContract = IERC20(tokenAddress);
-        require(
-            tokenContract.balanceOf(address(this)) >= amount,
-            "You are trying to withdraw more funds than available"
-        );
-
-        require(tokenContract.transfer(to, amount), "Fail on transfer");
-    }
-
-    
-//    function getTokenAddressFromPair(address pairAddr) internal returns (address){
-//        IUniswapV2Pair pair = IUniswapV2Pair(pairAddr);
-//        if(pair.token0() == address(this))
-//            return pair.token1();
-//        else if(pair.token1() == address(this))
-//            return pair.token0();
-//        revert("not a pair");
-//    }
-
-//    function antiDumpCheck(address from, address to, uint256 amount) internal returns(uint256) {
-//        address pair = DEAD_ADDRESS;
-//
-//        if(automatedMarketMakerPairs[to])
-//            pair = to;
-////        else if(automatedMarketMakerPairs[from])
-////            pair = from;
-//
-//        if(pair!=DEAD_ADDRESS) {
-//            uint256 volume = getTokenVolumeFromPair(pair);
-//            if (volume > 0) {
-//                uint256 maxVolume = volume.mul(antiDumpThreshold).div(10**decimals());
-//                if (amount >= maxVolume)
-//                    return antiDumpFee;
-//            }
-//        }
-//        return 0;
-//    }
 }
