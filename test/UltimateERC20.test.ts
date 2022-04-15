@@ -374,20 +374,25 @@ describe("UltimateCoin", function () {
 
       describe("Anti dump", function () {
         beforeEach(async function () {
+          await contract.transfer(address2.address, expandTo9Decimals("10000"));
+          await contract.transfer(address3.address, expandTo9Decimals("5000"));
+          await contract.connect(address1).transfer(address4.address, expandTo9Decimals("1"));
+
           await contract.setTaxFeePercent(0, expandTo9Decimals("0.05")); // 5% tax fee
 
           await contract.excludeFromReward(owner.address); // exclude owner from reward
+          await contract.excludeFromReward(pairContract.address); // exclude pair from reward
         });
 
         it("should activate anti dump mechanism if threshold is reached", async function () {
           await contract
             .connect(address1)
-            .approve(router.address, expandTo9Decimals("500"));
+            .approve(router.address, expandTo9Decimals("10000"));
 
           await router
             .connect(address1)
             .swapExactTokensForETHSupportingFeeOnTransferTokens(
-              expandTo9Decimals("500"),
+              expandTo9Decimals("10000"),
               0,
               [contract.address, WETH],
               address1.address,
@@ -396,11 +401,22 @@ describe("UltimateCoin", function () {
 
           // 30% (5% from taxFee + 25% from antiDumpFee)
           expect(await contract.balanceOf(address1.address)).to.equal(
-            expandTo9Decimals("9513.973482262")
+            expandTo9Decimals("0")
+          );
+          
+          // 67% of reflection
+          expect(await contract.balanceOf(address2.address)).to.equal(
+            expandTo9Decimals("11999.866675554")
           );
 
+          // 33% of reflection
+          expect(await contract.balanceOf(address3.address)).to.equal(
+            expandTo9Decimals("5999.933337777")
+          );
+
+          // 110000 - 3000 (30%)
           expect(await contract.balanceOf(pairContract.address)).to.equal(
-            expandTo9Decimals("100487.026517737")
+            expandTo9Decimals("107000")
           );
         });
       });
