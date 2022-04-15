@@ -137,7 +137,7 @@ describe("UltimateCoin", function () {
 
     it("Should calculate total fee correctly", async function () {
       expect(await contract.totalFees()).to.equal(expandTo9Decimals("0"));
-      await contract.setTaxFeePercent(0, utils.parseEther("0.1"));
+      await contract.setTaxFeePercent(0, expandTo9Decimals("0.1"));
       await contract
         .connect(address1)
         .transfer(address2.address, expandTo9Decimals("1"));
@@ -146,7 +146,7 @@ describe("UltimateCoin", function () {
     });
 
     it("Should be able to transfer with BURN fee", async function () {
-      await contract.setBurnFeePercent(0, utils.parseEther("0.1"));
+      await contract.setBurnFeePercent(0, expandTo9Decimals("0.1"));
 
       // expect the value be lower than the transferred
       await contract
@@ -165,7 +165,7 @@ describe("UltimateCoin", function () {
     });
 
     it("Should charge ecosystem fee", async function () {
-      await contract.setEcoSystemFeePercent(0, utils.parseEther("0.1"));
+      await contract.setEcoSystemFeePercent(0, expandTo9Decimals("0.1"));
 
       await contract.setEcoSystemFeeAddress(address3.address, address4.address);
 
@@ -179,7 +179,7 @@ describe("UltimateCoin", function () {
     });
 
     it("Should charge staking fee", async function () {
-      await contract.setStakingFeePercent(0, utils.parseEther("0.1"));
+      await contract.setStakingFeePercent(0, expandTo9Decimals("0.1"));
 
       await contract.setStakingFeeAddress(address3.address, address4.address);
 
@@ -240,11 +240,11 @@ describe("UltimateCoin", function () {
       });
 
       it("Should swap ETH for Tokens supporting fees on transfer", async function () {
-        await contract.setEcoSystemFeePercent(0, utils.parseEther("0.01"));
-        await contract.setStakingFeePercent(0, utils.parseEther("0.01"));
-        await contract.setLiquidityFeePercent(0, utils.parseEther("0.01"));
-        await contract.setTaxFeePercent(0, utils.parseEther("0.01"));
-        await contract.setBurnFeePercent(0, utils.parseEther("0.01"));
+        await contract.setEcoSystemFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setStakingFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setLiquidityFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setTaxFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setBurnFeePercent(0, expandTo9Decimals("0.01"));
 
         await expect(
           router
@@ -260,11 +260,11 @@ describe("UltimateCoin", function () {
       });
 
       it("Should swap Tokens for ETH supporting fees on transfer", async function () {
-        await contract.setEcoSystemFeePercent(0, utils.parseEther("0.01"));
-        await contract.setStakingFeePercent(0, utils.parseEther("0.01"));
-        await contract.setLiquidityFeePercent(0, utils.parseEther("0.01"));
-        await contract.setTaxFeePercent(0, utils.parseEther("0.01"));
-        await contract.setBurnFeePercent(0, utils.parseEther("0.01"));
+        await contract.setEcoSystemFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setStakingFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setLiquidityFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setTaxFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.setBurnFeePercent(0, expandTo9Decimals("0.01"));
 
         await contract
           .connect(address1)
@@ -285,7 +285,7 @@ describe("UltimateCoin", function () {
 
       describe("liquidity fee", function () {
         beforeEach(async function () {
-          await contract.setLiquidityFeePercent(0, utils.parseEther("0.1"));
+          await contract.setLiquidityFeePercent(0, expandTo9Decimals("0.1"));
         });
 
         it("Should add liquidity to LP and cashback to user", async function () {
@@ -374,7 +374,7 @@ describe("UltimateCoin", function () {
 
       describe("Anti dump", function () {
         beforeEach(async function () {
-          await contract.setTaxFeePercent(0, utils.parseEther("0.05")); // 5% tax fee
+          await contract.setTaxFeePercent(0, expandTo9Decimals("0.05")); // 5% tax fee
 
           await contract.excludeFromReward(owner.address); // exclude owner from reward
         });
@@ -472,7 +472,7 @@ describe("UltimateCoin", function () {
 
     describe("Reflect fee", async function () {
       beforeEach(async function () {
-        await contract.setTaxFeePercent(0, utils.parseEther("0.01"));
+        await contract.setTaxFeePercent(0, expandTo9Decimals("0.01"));
 
         await contract.excludeFromReward(owner.address); // exclude owner from reward
         await contract.transfer(address1.address, expandTo9Decimals("10000"));

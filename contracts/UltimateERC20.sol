@@ -87,8 +87,6 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled;
 
-    bool private rentrancy_lock;
-
     uint256 public numTokensSellToAddToLiquidity;
 
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
@@ -126,14 +124,14 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
     }
 
     // @dev the constructor
-    constructor (string memory __name, string memory __symbol) {
+    constructor (string memory __name, string memory __symbol) AntiDumpOwnable(9) {
         _name = __name;
         _symbol = __symbol;
         _decimals = 9;
 
         _tTotal = 1000000000 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
-        _maxFee = 2 * 10**17; // 20%
+        _maxFee = 2 * 10**8; // 20%
 
         swapAndLiquifyEnabled = false;
 
@@ -163,11 +161,10 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
 //        _isExcludedFromReward[owner()] = true;
         _isExcludedFromReward[address(this)] = true;
         _isExcludedFromReward[_burnAddress] = true;
-
         // set fees
-        // 5*10**15 is 0,5% 5*10**16 is 5%
-        _emptyFees = FeeTier({ecoSystemFee:0, stakingFee:0, liquidityFee:5*10**15, taxFee:5*10**15, burnFee:0, ecoSystem:address(this), staking:address(this)});
-        _defaultFees = FeeTier({ecoSystemFee:125*10**14, stakingFee:125*10**14, liquidityFee:25*10**15, taxFee:5*10**16, burnFee:0, ecoSystem:address(this), staking:address(this)});
+        // 5*10**6 is 0,5% 5*10**7 is 5%
+        _emptyFees = FeeTier({ecoSystemFee:0, stakingFee:0, liquidityFee:5*10**6, taxFee:5*10**6, burnFee:0, ecoSystem:address(this), staking:address(this)});
+        _defaultFees = FeeTier({ecoSystemFee:125*10**5, stakingFee:125*10**5, liquidityFee:25*10**6, taxFee:5*10**7, burnFee:0, ecoSystem:address(this), staking:address(this)});
         
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
@@ -531,7 +528,7 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
     function calculateFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
         if(_fee == 0) return 0;
         return _amount.mul(_fee).div(
-            10**18 // todo: make this 10**18
+            10**9
         );
     }
 
@@ -666,7 +663,6 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
             cakeReceiver,
             block.timestamp.add(300)
         );
-        // todo: inspect if some tokens still remains in the contract - slippage problem
     }
 
     //this method is responsible for taking all fee, if takeFee is true

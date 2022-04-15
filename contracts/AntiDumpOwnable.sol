@@ -13,16 +13,26 @@ contract AntiDumpOwnable is Ownable{
     using Address for address;
 
     // @dev antidump mechanics
-    uint256 public antiDumpThreshold = 5 * 10**15; // 0.5%
+    uint256 public antiDumpThreshold; // 0.5%
 
     // @dev antidump mechanics
-    uint256 public antiDumpFee = 25 * 10**16; // 25%
+    uint256 public antiDumpFee; // 25%
 
     // @dev antidump mechanics
-    uint256 public constant ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**15; // 0.1%
+    uint256 public immutable ANTI_DUMP_THRESHOLD_LIMIT; // 0.1%
 
     // @dev antidump mechanics the total max value of the extra fees
-    uint256 public constant ANTI_DUMP_FEE_LIMIT = 25 * 10**16; // 25%
+    uint256 public immutable ANTI_DUMP_FEE_LIMIT; // 25%
+
+    constructor(uint256 decimals) {
+        antiDumpThreshold = 5 * 10**(decimals-3); // 0.5%
+
+        antiDumpFee = 25 * 10**(decimals-2); // 25%
+
+        ANTI_DUMP_THRESHOLD_LIMIT = 1 * 10**(decimals-3); // 0.1%
+
+        ANTI_DUMP_FEE_LIMIT = 25 * 10**(decimals-2); // 25%
+    }
 
     function setAntiDumpThreshold(uint256 newThreshold) public onlyOwner {
         require(newThreshold >= ANTI_DUMP_THRESHOLD_LIMIT, "The company cannot set abusive threshold");

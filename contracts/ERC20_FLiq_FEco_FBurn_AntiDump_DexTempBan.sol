@@ -69,7 +69,7 @@ contract ERC20FLiqFEcoFBurnAntiDumpDexTempBan is ERC20, Ownable, TimeLockTransac
     // @dev what pairs are allowed to work in the token
     mapping(address => bool) public automatedMarketMakerPairs;
 
-    constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, uint256 totalSupply) ERC20(name, symbol) AntiDumpOwnable(18) {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
 
