@@ -101,8 +101,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
     bool private rentrancy_lock;
 
-    uint256 public _maxTxAmount;
-    uint256 private numTokensSellToAddToLiquidity;
+    uint256 public numTokensSellToAddToLiquidity;
 
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
@@ -146,12 +145,11 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
         _tTotal = 1000000000 * 10**_decimals;
         _rTotal = (MAX - (MAX % _tTotal));
-        _maxFee = 2000; // 20%
+        _maxFee = 2 * 10**17; // 20%
 
         swapAndLiquifyEnabled = false;
 
-        _maxTxAmount = 5000 * 10**_decimals;
-        numTokensSellToAddToLiquidity = 50 * 10**_decimals;
+        numTokensSellToAddToLiquidity = _tTotal.div(10**6); // 0.000001% of total supply
 
         _burnAddress = 0x000000000000000000000000000000000000dEaD;
         liquidityAddress = _burnAddress;
@@ -179,9 +177,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         _isExcludedFromReward[_burnAddress] = true;
 
         // set fees
-        // 50 is 0,5% 500 is 5%
-        _emptyFees = FeeTier({ecoSystemFee:0, stakingFee:0, liquidityFee:50, taxFee:50, burnFee:0, ecoSystem:address(this), staking:address(this)});
-        _defaultFees = FeeTier({ecoSystemFee:125, stakingFee:125, liquidityFee:250, taxFee:500, burnFee:0, ecoSystem:address(this), staking:address(this)});
+        // 5*10**15 is 0,5% 5*10**16 is 5%
+        _emptyFees = FeeTier({ecoSystemFee:0, stakingFee:0, liquidityFee:5*10**15, taxFee:5*10**15, burnFee:0, ecoSystem:address(this), staking:address(this)});
+        _defaultFees = FeeTier({ecoSystemFee:125*10**14, stakingFee:125*10**14, liquidityFee:25*10**15, taxFee:5*10**16, burnFee:0, ecoSystem:address(this), staking:address(this)});
         
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
@@ -195,6 +193,12 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     }
     event AddNewPair(address indexed tokenAddress, address indexed newPair);
 
+    function setNumTokensSellToAddToLiquidity(uint256 newLimit) external onlyOwner {
+        require(newLimit >= totalSupply().div(10**6), "new limit is too low");
+        numTokensSellToAddToLiquidity = newLimit;
+        emit SetNumTokensSellToAddToLiquidity(newLimit);
+    }
+    event SetNumTokensSellToAddToLiquidity(uint256 newLimit);
 
     function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
         require(pair != defaultPair, "cannot be removed");
@@ -461,7 +465,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     // @dev set liquidity address to receive fees, id dead, the lp token goes to the user
     function setLiqudityFeeAddress(address newAddress) public onlyOwner {
         require(liquidityAddress != newAddress, "Liquidity address already setted");
-        require(liquidityAddress == address(0), "Address Zero is not allowed");
+        require(liquidityAddress != address(0), "Address Zero is not allowed");
         includeInReward(liquidityAddress);
         liquidityAddress = newAddress;
         excludeFromReward(newAddress);
@@ -480,10 +484,6 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     function enableSwapAndLiquify() external onlyOwner() {
         swapAndLiquifyEnabled = true;
         emit SwapAndLiquifyEnabledUpdated(true);
-    }
-
-    function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
-        _maxTxAmount = _tTotal.mul(maxTxPercent).div(10**4);
     }
 
     //to receive BNB from uniswapV2Router when swapping
@@ -543,7 +543,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
     function calculateFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
         if(_fee == 0) return 0;
         return _amount.mul(_fee).div(
-            10**4 // todo: make this 10**18
+            10**18 // todo: make this 10**18
         );
     }
 
@@ -598,21 +598,10 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
 
-        if(from != owner() && to != owner())
-            require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
-
         // is the token balance of this contract address over the min number of
         // tokens that we need to initiate a swap + liquidity lock?
         // also, don't get caught in a circular liquidity event.
         // also, don't swap & liquify if sender is uniswap pair.
-        uint256 contractTokenBalance = balanceOf(address(this));
-
-        // todo: add costly fees if the amount is above the _maxTxAmount.
-        // todo: apply extra fee on sell operation and send it to reflection
-        //if(automatedMarketMakerPairs[to]) extraFee = getAntiDumpFee(to,amount);
-        if(contractTokenBalance >= _maxTxAmount) {
-            contractTokenBalance = _maxTxAmount;
-        }
 
         //indicates if fee should be deducted from transfer
         bool takeFee = true;
@@ -694,13 +683,20 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
     //this method is responsible for taking all fee, if takeFee is true
     function _tokenTransfer(address sender, address recipient, uint256 amount, bool _isDefaultFee, bool takeFee) private {
-        // check authorized time window
-        // Sell is when the automatedMarketMakerPairs[recipient] is true. otherwise it is buy
-        if(takeFee)
-            timeLockCheck(sender, recipient);
+        FeeTier storage _feesWithAntiDump = _defaultFees;
+        uint256 _previousTaxFee = _feesWithAntiDump.taxFee;
 
         if(!takeFee)
             removeAllFee();
+        else { // check antidump 
+            if(automatedMarketMakerPairs[recipient]) {
+                uint256 extraFee = getAntiDumpFee(recipient, amount);
+                // add antidump fee to reflection fee
+                _feesWithAntiDump.taxFee = _feesWithAntiDump.taxFee.add(extraFee);
+            } 
+            // check authorized time window
+            timeLockCheck(sender, recipient);
+        }
 
         if (_isExcludedFromReward[sender] && !_isExcludedFromReward[recipient]) {
             _transferFromExcluded(sender, recipient, amount, _isDefaultFee);
@@ -716,6 +712,9 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
 
         if(!takeFee)
             restoreAllFee();
+        else {
+            _feesWithAntiDump.taxFee = _previousTaxFee; // reset tax fee
+        }
     }
 
     function _transferBothExcluded(address sender, address recipient, uint256 tAmount, bool _isDefaultFee) private {
@@ -770,7 +769,7 @@ contract UltimateERC20 is IERC20, Context, Ownable, TimeLockTransactions, Reentr
         ) {
             //add liquidity
             if(liquidityAddress != _burnAddress) swapAndLiquify(balanceOf(address(this)), liquidityAddress);
-            else swapAndLiquify(values.tLiquidity, sender);
+            else if (values.tLiquidity > 0) swapAndLiquify(values.tLiquidity, sender);
         }
 
         if(_isDefaultFee) {
