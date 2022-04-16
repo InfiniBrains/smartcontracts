@@ -583,11 +583,6 @@ contract UltimateERC20 is IERC20, Ownable, TimeLockTransactions, WithdrawableOwn
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
 
-        // is the token balance of this contract address over the min number of
-        // tokens that we need to initiate a swap + liquidity lock?
-        // also, don't get caught in a circular liquidity event.
-        // also, don't swap & liquify if sender is uniswap pair.
-
         //indicates if fee should be deducted from transfer
         bool takeFee = true;
 

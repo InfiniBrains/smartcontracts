@@ -122,6 +122,25 @@ describe("UltimateCoin", function () {
     );
   });
 
+  it("Owner should be able to set update burn address", async function () {
+    await contract.updateBurnAddress(address4.address);
+
+    expect(await contract._burnAddress()).to.equal(
+      address4.address
+    );
+
+    expect(await contract.isExcludedFromReward(address4.address)).to.equal(true);
+  });
+
+
+  it("Owner should be able to include in fees an excluded from fees account", async function () {
+    await contract.excludeFromFee(address4.address);
+    expect(await contract.isExcludedFromFee(address4.address)).to.equal(true);
+
+    await contract.includeInFee(address4.address);
+    expect(await contract.isExcludedFromFee(address4.address)).to.equal(false);
+  });
+
   describe("Fees", function () {
     beforeEach(async function () {
       await contract.setEcoSystemFeePercent(0, 0);
@@ -192,7 +211,49 @@ describe("UltimateCoin", function () {
       );
     });
 
-    describe("after liquidity is added", function () {
+    it("Should charge burn fee", async function () {
+      await contract.setBurnFeePercent(0, expandTo9Decimals("0.1"));
+
+      await contract
+        .connect(address1)
+        .transfer(address2.address, expandTo9Decimals("0.9"));
+
+      expect(await contract.balanceOf(await contract._burnAddress())).to.equal(
+        expandTo9Decimals("0.09")
+      );
+    });
+
+    it("Should not charge fees on transfer to excluded address", async function () {
+      await contract.setEcoSystemFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.setStakingFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.setBurnFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.excludeFromFee(address2.address);
+
+      await contract
+      .connect(address1)
+      .transfer(address2.address, expandTo9Decimals("0.9"));
+
+      expect(await contract.balanceOf(address2.address)).to.equal(
+        expandTo9Decimals("0.9")
+      );
+    })
+
+    it("Should not charge fees on transfer from excluded address", async function () {
+      await contract.setEcoSystemFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.setStakingFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.setBurnFeePercent(0, expandTo9Decimals("0.05"));
+      await contract.excludeFromFee(address1.address);
+
+      await contract
+      .connect(address1)
+      .transfer(address2.address, expandTo9Decimals("0.9"));
+
+      expect(await contract.balanceOf(address2.address)).to.equal(
+        expandTo9Decimals("0.9")
+      );
+    })
+
+    describe("After liquidity is added", function () {
       const ROUTER_ADDRESS = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
       let router: IUniswapV2Router02;
       let WETH: string;
@@ -283,7 +344,7 @@ describe("UltimateCoin", function () {
         ).to.emit(contract, "Transfer");
       });
 
-      describe("liquidity fee", function () {
+      describe("Liquidity fee", function () {
         beforeEach(async function () {
           await contract.setLiquidityFeePercent(0, expandTo9Decimals("0.1"));
         });
@@ -308,6 +369,26 @@ describe("UltimateCoin", function () {
             await contract.balanceOf(await contract.defaultPair())
           ).to.equal(expandTo9Decimals("101000"));
           expect(initialCakeBalance).to.be.lt(finalCakeBalance);
+        });
+
+        it("Should not add liquidity to LP and cashback if liquidity fee is 0", async function () {
+          await contract.enableSwapAndLiquify();
+          await contract.excludeFromFee(address1.address);
+          await contract.transfer(contract.address, expandTo9Decimals("1000"));
+
+          await contract
+            .connect(address1)
+            .transfer(address2.address, expandTo9Decimals("10000"));
+
+          const finalCakeBalance = await pairContract.balanceOf(
+            address1.address
+          );
+
+          expect(await contract.balanceOf(contract.address)).to.equal(expandTo9Decimals("1000"));
+          expect(
+            await contract.balanceOf(await contract.defaultPair())
+          ).to.equal(expandTo9Decimals("100000"));
+          expect(finalCakeBalance).to.be.equal(0);
         });
 
         it("Should add liquidity to LP and cashback to liquidity address", async function () {
@@ -384,7 +465,7 @@ describe("UltimateCoin", function () {
           await contract.excludeFromReward(pairContract.address); // exclude pair from reward
         });
 
-        it("should activate anti dump mechanism if threshold is reached", async function () {
+        it("Should activate anti dump mechanism if threshold is reached", async function () {
           await contract
             .connect(address1)
             .approve(router.address, expandTo9Decimals("10000"));
@@ -432,7 +513,7 @@ describe("UltimateCoin", function () {
             .approve(router.address, expandTo9Decimals("1000"));
         });
 
-        it("should revert if user tries to transact to dex before timelock expires", async function () {
+        it("Should revert if user tries to transact to dex before timelock expires", async function () {
           await router
             .connect(address1)
             .swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -456,7 +537,7 @@ describe("UltimateCoin", function () {
           ).to.be.revertedWith("TransferHelper: TRANSFER_FROM_FAILED");
         });
 
-        it("should pass if user tries to transact to dex after timelock expires", async function () {
+        it("Should pass if user tries to transact to dex after timelock expires", async function () {
           await router
             .connect(address1)
             .swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -486,12 +567,103 @@ describe("UltimateCoin", function () {
       });
     });
 
-    describe("Reflect fee", async function () {
+    describe("Reflection fee", async function () {
       beforeEach(async function () {
-        await contract.setTaxFeePercent(0, expandTo9Decimals("0.01"));
+        await contract.transfer(address1.address, expandTo9Decimals("15000"));
+        await contract.transfer(address2.address, expandTo9Decimals("10000"));
+        await contract.transfer(address3.address, expandTo9Decimals("5000"));
+        await contract.connect(address1).transfer(address4.address, expandTo9Decimals("1"));
+
+        await contract.setTaxFeePercent(0, expandTo9Decimals("0.05")); // 5% tax fee
 
         await contract.excludeFromReward(owner.address); // exclude owner from reward
-        await contract.transfer(address1.address, expandTo9Decimals("10000"));
+      });
+
+      it("Should charge reflection fee on standard transfer", async function () {
+        // 5% of tax fee (500)
+        await contract.connect(address1).transfer(address3.address, expandTo9Decimals("10000"));
+
+        // 17% of tax fee (84.742890071)
+        expect(await contract.balanceOf(address1.address)).to.equal(
+          expandTo9Decimals("5084.742890071")
+        );
+        
+        // 33% of reflection (169.485780143)
+        expect(await contract.balanceOf(address2.address)).to.equal(
+          expandTo9Decimals("10169.485780143")
+        );
+
+        // 50% of reflection (245.754381207)
+        expect(await contract.balanceOf(address3.address)).to.equal(
+          expandTo9Decimals("14745.754381207")
+        );
+      });
+
+      it("Should charge reflection fee on from excluded transfer", async function () {
+        await contract.excludeFromReward(address1.address);
+
+        // 5% of tax fee (500)
+        await contract.connect(address1).transfer(address3.address, expandTo9Decimals("10000"));
+
+        // excluded doesn't recieve tax fee
+        expect(await contract.balanceOf(address1.address)).to.equal(
+          expandTo9Decimals("5000")
+        );
+        
+        // 41% of reflection (204.07330313)
+        expect(await contract.balanceOf(address2.address)).to.equal(
+          expandTo9Decimals("10204.07330313")
+        );
+
+        // 59% of reflection (295.906289539)
+        expect(await contract.balanceOf(address3.address)).to.equal(
+          expandTo9Decimals("14795.906289539")
+        );
+      });
+
+      it("Should charge reflection fee on to excluded transfer", async function () {
+        await contract.excludeFromReward(address3.address);
+
+        // 5% of tax fee (500)
+        await contract.connect(address1).transfer(address3.address, expandTo9Decimals("10000"));
+
+        // 33% of reflection (166.655556296)
+        expect(await contract.balanceOf(address1.address)).to.equal(
+          expandTo9Decimals("5166.655556296")
+        );
+        
+        // 67% of reflection (333.311112592)
+        expect(await contract.balanceOf(address2.address)).to.equal(
+          expandTo9Decimals("10333.311112592")
+        );
+
+        // excluded doesn't recieve tax fee
+        expect(await contract.balanceOf(address3.address)).to.equal(
+          expandTo9Decimals("14500")
+        );
+      });
+
+      it("Should charge reflection fee on both excluded transfer", async function () {
+        await contract.excludeFromReward(address1.address);
+        await contract.excludeFromReward(address3.address);
+
+        // 5% of tax fee (500)
+        await contract.connect(address1).transfer(address3.address, expandTo9Decimals("10000"));
+
+        // excluded doesn't recieve tax fee
+        expect(await contract.balanceOf(address1.address)).to.equal(
+          expandTo9Decimals("5000")
+        );
+        
+        // 100% of reflection (499.950004999)
+        expect(await contract.balanceOf(address2.address)).to.equal(
+          expandTo9Decimals("10499.950004999")
+        );
+
+        // excluded doesn't recieve tax fee
+        expect(await contract.balanceOf(address3.address)).to.equal(
+          expandTo9Decimals("14500")
+        );
       });
 
       // it("Check gas price",async function(){
@@ -505,32 +677,6 @@ describe("UltimateCoin", function () {
       //       .connect(address1).estimateGas
       //       .transfer(address2.address, expandTo9Decimals("500")));
       // });
-
-      it("Should charge reflect fee", async function () {
-        expect(await contract.balanceOf(owner.address)).to.equal(
-          expandTo9Decimals("999989999")
-        ); // should not charge on owner transfer
-
-        expect(await contract.balanceOf(address1.address)).to.equal(
-          expandTo9Decimals("10001")
-        ); // should not charge on owner transfer
-
-        await contract
-          .connect(address1)
-          .transfer(address2.address, expandTo9Decimals("10000"));
-
-        expect(await contract.balanceOf(owner.address)).to.equal(
-          expandTo9Decimals("999989999")
-        );
-
-        expect(await contract.balanceOf(address1.address)).to.equal(
-          expandTo9Decimals("1.010099989")
-        );
-
-        expect(await contract.balanceOf(address2.address)).to.equal(
-          expandTo9Decimals("9999.98990001")
-        );
-      });
     });
   });
 
