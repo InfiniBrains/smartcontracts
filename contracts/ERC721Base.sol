@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -16,6 +16,8 @@ contract ERC721Base is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrade
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
+    string private baseUri;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -28,8 +30,12 @@ contract ERC721Base is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrade
         __UUPSUpgradeable_init();
     }
 
-    function _baseURI() internal pure override returns (string memory) {
-        return "https://cal.heroesofmetaverse.io/metadata/";
+    function setBaseUri(string memory uri) external onlyOwner {
+        baseUri = uri;
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseUri;
     }
 
     function safeMint(address to, string memory uri) public onlyOwner {

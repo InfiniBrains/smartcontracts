@@ -32,13 +32,13 @@ contract BatchNftSender is WithdrawableOwnable {
         emit TransferERC721(token, _msgSender(), bankWallet, ids);
     }
 
-    function SendERC721(address token, uint256[] memory ids, address destination) nonReentrant external {
-        IERC721 nftContract = IERC721(token);
-        require(nftContract.isApprovedForAll(destination, address(this)), "BatchNftSender: not approved");
-
-        for(uint256 i = 0; i < ids.length; i++)
-            nftContract.safeTransferFrom(_msgSender(),bankWallet,ids[i]);
-        emit TransferERC721(token, _msgSender(), destination, ids);
-    }
+//    function SendERC721(address token, uint256[] memory ids, address destination) nonReentrant external {
+//        IERC721 nftContract = IERC721(token);
+//        require(nftContract.isApprovedForAll(_msgSender(), address(this)), "BatchNftSender: not approved");
+//
+//        for(uint256 i = 0; i < ids.length; i++)
+//            nftContract.safeTransferFrom(_msgSender(),bankWallet,ids[i]);
+//        emit TransferERC721(token, _msgSender(), destination, ids);
+//    }
     event TransferERC721(address token, address from, address to, uint256[] ids);
 }
