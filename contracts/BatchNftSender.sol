@@ -32,13 +32,25 @@ contract BatchNftSender is WithdrawableOwnable {
         emit TransferERC721(token, _msgSender(), bankWallet, ids);
     }
 
-//    function SendERC721(address token, uint256[] memory ids, address destination) nonReentrant external {
-//        IERC721 nftContract = IERC721(token);
-//        require(nftContract.isApprovedForAll(_msgSender(), address(this)), "BatchNftSender: not approved");
-//
-//        for(uint256 i = 0; i < ids.length; i++)
-//            nftContract.safeTransferFrom(_msgSender(),bankWallet,ids[i]);
-//        emit TransferERC721(token, _msgSender(), destination, ids);
-//    }
+    function SendERC721(address token, uint256[] memory ids, address destination) nonReentrant external {
+        IERC721 nftContract = IERC721(token);
+        require(nftContract.isApprovedForAll(_msgSender(), address(this)), "BatchNftSender: not approved");
+
+        for(uint256 i = 0; i < ids.length; i++)
+            nftContract.safeTransferFrom(_msgSender(),bankWallet,ids[i]);
+        emit TransferERC721(token, _msgSender(), destination, ids);
+    }
     event TransferERC721(address token, address from, address to, uint256[] ids);
+
+    function TransferNfts(address[] memory tokens, uint256[] memory ids, address[] memory destinations) nonReentrant external {
+        require(tokens.length == ids.length && ids.length == destinations.length, "all arrays should have same size");
+        for(uint256 i = 0; i<tokens.length; i++)
+            require(IERC721(tokens[i]).isApprovedForAll(_msgSender(), address(this)), "BatchNftSender: not approved");
+
+        for(uint256 i = 0; i < tokens.length; i++)
+            IERC721(tokens[i]).safeTransferFrom(_msgSender(),destinations[i],ids[i]);
+
+        emit TransferNftsEvent(tokens, ids, _msgSender(), destinations);
+    }
+    event TransferNftsEvent(address[] tokens, uint256[] ids, address from, address[] to);
 }
