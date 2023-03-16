@@ -9,6 +9,7 @@ import "solidity-coverage";
 import { Wallet } from "ethers";
 import { resolve } from "path";
 import { HardhatNetworkUserConfig } from "hardhat/types/config";
+import "@openzeppelin/hardhat-upgrades";
 
 dotenv.config({ path: resolve(__dirname, "./.env") });
 
