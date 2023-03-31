@@ -1,0 +1,1733 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for contracts/CryptoMultiSender.sol</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> CryptoMultiSender.sol
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>0/125</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>0/100</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>0/22</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>0/159</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line low'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: NOLICENSE
+&nbsp;
+/***
+ * @author Original: Zenos Pavlakou
+ * @author Modified: Alexandre Tolstenko
+ * @notice reference https://cryptomultisender.com/blog/our-airdrop-smart-contract
+ */
+&nbsp;
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+&nbsp;
+pragma solidity ^0.8.9;
+&nbsp;
+contract CryptoMultisender is Ownable {
+&nbsp;
+    using SafeMath for uint256;
+&nbsp;
+    mapping (address =&gt; uint256) public tokenTrialDrops;
+&nbsp;
+    mapping (address =&gt; bool) public isPremiumMember;
+    mapping (address =&gt; bool) public isAffiliate;
+    mapping (string =&gt; address) public affiliateCodeToAddr;
+    mapping (string =&gt; bool) public affiliateCodeExists;
+    mapping (address =&gt; string) public affiliateCodeOfAddr;
+    mapping (address =&gt; string) public isAffiliatedWith;
+&nbsp;
+    uint256 public premiumMemberFee;
+    uint256 public rate;
+    uint256 public dropUnitPrice;
+&nbsp;
+&nbsp;
+    event TokenAirdrop(address indexed by, address indexed tokenAddress, uint256 totalTransfers);
+    event EthAirdrop(address indexed by, uint256 totalTransfers, uint256 ethValue);
+&nbsp;
+&nbsp;
+    event RateChanged(uint256 from, uint256 to);
+    event RefundIssued(address indexed to, uint256 totalWei);
+    event ERC20TokensWithdrawn(address token, address sentTo, uint256 value);
+    event CommissionPaid(address indexed to, uint256 value);
+    event NewPremiumMembership(address indexed premiumMember);
+    event NewAffiliatePartnership(address indexed newAffiliate, string indexed affiliateCode);
+    event AffiliatePartnershipRevoked(address indexed affiliate, string indexed affiliateCode);
+    event PremiumMemberFeeUpdated(uint256 newFee);
+&nbsp;
+&nbsp;
+<span class="fstat-no" title="function not covered" >    constructor() {</span>
+        rate = 10000;
+        dropUnitPrice = 1e14;
+        premiumMemberFee = 25e16;
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows the owner of this contract to change the fee for users to become premium members.
+     *
+     * @param _fee The new fee.
+     *
+     * @return True if the fee is changed successfully. False otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function setPremiumMemberFee(uint256 _fee) public onlyOwner returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(_fee &gt; 0 &amp;&amp; _fee != premiumMemberFee)</span>;
+        premiumMemberFee = _fee;
+<span class="cstat-no" title="statement not covered" >        emit PremiumMemberFeeUpdated(_fee);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+<span class="fstat-no" title="function not covered" >    function uint2str(uint _i) internal pure returns (string memory _uintAsString) {</span>
+<span class="cstat-no" title="statement not covered" >        if (_i == 0) {</span>
+<span class="cstat-no" title="statement not covered" >            return "0";</span>
+        }
+<span class="cstat-no" title="statement not covered" >        uint j = _i;</span>
+<span class="cstat-no" title="statement not covered" >        uint len;</span>
+<span class="cstat-no" title="statement not covered" >        while (j != 0) {</span>
+            len++;
+            j /= 10;
+        }
+<span class="cstat-no" title="statement not covered" >        bytes memory bstr = new bytes(len);</span>
+<span class="cstat-no" title="statement not covered" >        uint k = len;</span>
+<span class="cstat-no" title="statement not covered" >        while (_i != 0) {</span>
+            k = k-1;
+<span class="cstat-no" title="statement not covered" >            uint8 temp = (48 + uint8(_i - _i / 10 * 10));</span>
+<span class="cstat-no" title="statement not covered" >            bytes1 b1 = bytes1(temp);</span>
+            bstr[k] = b1;
+            _i /= 10;
+        }
+<span class="cstat-no" title="statement not covered" >        return string(bstr);</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Used to give change to users who accidentally send too much ETH to payable functions.
+    *
+    * @param _price The service fee the user has to pay for function execution.
+    **/
+<span class="fstat-no" title="function not covered" >    function giveChange(uint256 _price) internal {</span>
+<span class="cstat-no" title="statement not covered" >        if(msg.value &gt; _price) {</span>
+<span class="cstat-no" title="statement not covered" >            uint256 change = msg.value.sub(_price);</span>
+<span class="cstat-no" title="statement not covered" >            payable(msg.sender).transfer(change)</span>;
+        }
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Ensures that the correct affiliate code is used and also ensures that affiliate partners
+    * are not able to 'jack' commissions from existing users who they are not affiliated with.
+    *
+    * @param _afCode The affiliate code provided by the user.
+    *
+    * @return The correct affiliate code or void.
+    **/
+<span class="fstat-no" title="function not covered" >    function processAffiliateCode(string memory _afCode) internal returns(string memory) {</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(stringsAreEqual(isAffiliatedWith[msg.sender], "void") || !isAffiliate[affiliateCodeToAddr[_afCode]]) {</span>
+            isAffiliatedWith[msg.sender] = "void";
+<span class="cstat-no" title="statement not covered" >            return "void";</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(!stringsAreEqual(_afCode, "") &amp;&amp; stringsAreEqual(isAffiliatedWith[msg.sender],"")</span>
+        &amp;&amp; affiliateCodeExists[_afCode]) {
+<span class="cstat-no" title="statement not covered" >            if(affiliateCodeToAddr[_afCode] == msg.sender) {</span>
+<span class="cstat-no" title="statement not covered" >                return "void";</span>
+            }
+            isAffiliatedWith[msg.sender] = _afCode;
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(stringsAreEqual(_afCode,"") &amp;&amp; !stringsAreEqual(isAffiliatedWith[msg.sender],"")) {</span>
+            _afCode = isAffiliatedWith[msg.sender];
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(stringsAreEqual(_afCode,"") || !affiliateCodeExists[_afCode]) {</span>
+            isAffiliatedWith[msg.sender] = "void";
+            _afCode = "void";
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        return _afCode;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Allows the owner of this contract to grant users with premium membership.
+    *
+    * @param _addr The address of the user who is being granted premium membership.
+    *
+    * @return True if premium membership is granted successfully. False otherwise.
+    **/
+<span class="fstat-no" title="function not covered" >    function grantPremiumMembership(address _addr) public onlyOwner returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(!isPremiumMember[_addr], "Is already premiumMember member")</span>;
+        isPremiumMember[_addr] = true;
+<span class="cstat-no" title="statement not covered" >        emit NewPremiumMembership(_addr);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Allows users to become premium members.
+    *
+    * @param _afCode If a user has been refferred by an affiliate partner, they can provide
+    * an affiliate code so the partner gets commission.
+    *
+    * @return True if user successfully becomes premium member. False otherwise.
+    **/
+<span class="fstat-no" title="function not covered" >    function becomePremiumMember(string memory _afCode) public payable returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(!isPremiumMember[msg.sender], "Is already premiumMember member")</span>;
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            msg.value &gt;= premiumMemberFee,
+            string(abi.encodePacked(
+                "premiumMember fee is: ", uint2str(premiumMemberFee), ". Not enough ETH sent. ", uint2str(msg.value)
+            ))
+        );
+&nbsp;
+        isPremiumMember[msg.sender] = true;
+&nbsp;
+        _afCode = processAffiliateCode(_afCode);
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        giveChange(premiumMemberFee)</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(!stringsAreEqual(_afCode,"void") &amp;&amp; isAffiliate[affiliateCodeToAddr[_afCode]]) {</span>
+<span class="cstat-no" title="statement not covered" >            payable(owner()).transfer(premiumMemberFee.mul(80).div(100))</span>;
+<span class="cstat-no" title="statement not covered" >            uint256 commission = premiumMemberFee.mul(20).div(100);</span>
+<span class="cstat-no" title="statement not covered" >            payable(affiliateCodeToAddr[_afCode]).transfer(commission)</span>;
+<span class="cstat-no" title="statement not covered" >            emit CommissionPaid(affiliateCodeToAddr[_afCode], commission);</span>
+        } else {
+<span class="cstat-no" title="statement not covered" >            payable(owner()).transfer(premiumMemberFee)</span>;
+        }
+<span class="cstat-no" title="statement not covered" >        emit NewPremiumMembership(msg.sender);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Allows the owner of this contract to add an affiliate partner.
+    *
+    * @param _addr The address of the new affiliate partner.
+    * @param _code The affiliate code.
+    *
+    * @return True if the affiliate has been added successfully. False otherwise.
+    **/
+<span class="fstat-no" title="function not covered" >    function addAffiliate(address _addr, string memory _code) public onlyOwner returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(!isAffiliate[_addr], "Address is already an affiliate.")</span>;
+<span class="cstat-no" title="statement not covered" >        require(_addr != address(0))</span>;
+<span class="cstat-no" title="statement not covered" >        require(!affiliateCodeExists[_code])</span>;
+        affiliateCodeExists[_code] = true;
+        isAffiliate[_addr] = true;
+        affiliateCodeToAddr[_code] = _addr;
+        affiliateCodeOfAddr[_addr] = _code;
+<span class="cstat-no" title="statement not covered" >        emit NewAffiliatePartnership(_addr,_code);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Allows the owner of this contract to remove an affiliate partner.
+    *
+    * @param _addr The address of the affiliate partner.
+    *
+    * @return True if affiliate partner is removed successfully. False otherwise.
+    **/
+<span class="fstat-no" title="function not covered" >    function removeAffiliate(address _addr) public onlyOwner returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(isAffiliate[_addr])</span>;
+        isAffiliate[_addr] = false;
+        affiliateCodeToAddr[affiliateCodeOfAddr[_addr]] = address(0);
+<span class="cstat-no" title="statement not covered" >        emit AffiliatePartnershipRevoked(_addr, affiliateCodeOfAddr[_addr]);</span>
+        affiliateCodeOfAddr[_addr] = "No longer an affiliate partner";
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+&nbsp;
+    /**
+     * Checks whether or not an ERC20 token has used its free trial of 100 drops. This is a constant
+     * function which does not alter the state of the contract and therefore does not require any gas
+     * or a signature to be executed.
+     *
+     * @param _addressOfToken The address of the token being queried.
+     *
+     * @return true if the token being queried has not used its 100 first free trial drops, false
+     * otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function tokenHasFreeTrial(address _addressOfToken) public view returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        return tokenTrialDrops[_addressOfToken] &lt; 100;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Checks how many remaining free trial drops a token has.
+     *
+     * @param _addressOfToken the address of the token being queried.
+     *
+     * @return the total remaining free trial drops of a token.
+     * */
+<span class="fstat-no" title="function not covered" >    function getRemainingTrialDrops(address _addressOfToken) public view returns(uint256) {</span>
+<span class="cstat-no" title="statement not covered" >        if(tokenHasFreeTrial(_addressOfToken)) {</span>
+<span class="cstat-no" title="statement not covered" >            uint256 maxTrialDrops =  100;</span>
+<span class="cstat-no" title="statement not covered" >            return maxTrialDrops.sub(tokenTrialDrops[_addressOfToken]);</span>
+        }
+<span class="cstat-no" title="statement not covered" >        return 0;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the price of drops to be changed by the owner of the contract. Any attempt made by
+     * any other account to invoke the function will result in a loss of gas and the price will remain
+     * untampered.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function setRate(uint256 _newRate) public onlyOwner returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            _newRate != rate
+            &amp;&amp; _newRate &gt; 0
+        );
+<span class="cstat-no" title="statement not covered" >        emit RateChanged(rate, _newRate);</span>
+        rate = _newRate;
+<span class="cstat-no" title="statement not covered" >        uint256 eth = 1 ether;</span>
+        dropUnitPrice = eth.div(rate);
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the allowance of a token from its owner to this contract to be queried.
+     *
+     * As part of the ERC20 standard all tokens which fall under this category have an allowance
+     * function which enables owners of tokens to allow (or give permission) to another address
+     * to spend tokens on behalf of the owner. This contract uses this as part of its protocol.
+     * Users must first give permission to the contract to transfer tokens on their behalf, however,
+     * this does not mean that the tokens will ever be transferrable without the permission of the
+     * owner. This is a security feature which was implemented on this contract. It is not possible
+     * for the owner of this contract or anyone else to transfer the tokens which belong to others.
+     *
+     * @param _addr The address of the token's owner.
+     * @param _addressOfToken The contract address of the ERC20 token.
+     *
+     * @return The ERC20 token allowance from token owner to this contract.
+     * */
+<span class="fstat-no" title="function not covered" >    function getTokenAllowance(address _addr, address _addressOfToken) public view returns(uint256) {</span>
+<span class="cstat-no" title="statement not covered" >        IERC20 token = IERC20(_addressOfToken);</span>
+<span class="cstat-no" title="statement not covered" >        return token.allowance(_addr, address(this));</span>
+    }
+&nbsp;
+&nbsp;
+<span class="fstat-no" title="function not covered" >    fallback() external payable {</span>
+<span class="cstat-no" title="statement not covered" >        revert()</span>;
+    }
+&nbsp;
+&nbsp;
+    receive() external payable {
+        revert();
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Checks if two strings are the same.
+    *
+    * @param _a String 1
+    * @param _b String 2
+    *
+    * @return True if both strings are the same. False otherwise.
+    **/
+<span class="fstat-no" title="function not covered" >    function stringsAreEqual(string memory _a, string memory _b) internal pure returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        bytes32 hashA = keccak256(abi.encodePacked(_a));</span>
+<span class="cstat-no" title="statement not covered" >        bytes32 hashB = keccak256(abi.encodePacked(_b));</span>
+<span class="cstat-no" title="statement not covered" >        return hashA == hashB;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the distribution of Ether to be transferred to multiple recipients at
+     * a time. This function only facilitates batch transfers of constant values (i.e., all recipients
+     * will receive the same amount of tokens).
+     *
+     * @param _recipients The list of addresses which will receive tokens.
+     * @param _value The amount of tokens all addresses will receive.
+     * @param _afCode If the user is affiliated with a partner, they will provide this code so that
+     * the parter is paid commission.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function singleValueEthAirrop(address[] memory _recipients, uint256 _value, string memory _afCode) public payable returns(bool) {</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        uint256 price = _recipients.length.mul(dropUnitPrice);</span>
+<span class="cstat-no" title="statement not covered" >        uint256 totalCost = _value.mul(_recipients.length).add(price);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            msg.value &gt;= totalCost|| isPremiumMember[msg.sender],
+            "Not enough ETH sent with transaction!"
+        );
+&nbsp;
+&nbsp;
+        _afCode = processAffiliateCode(_afCode);
+&nbsp;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(!isPremiumMember[msg.sender]) {</span>
+<span class="cstat-no" title="statement not covered" >            distributeCommission(_recipients.length, _afCode)</span>;
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        giveChange(totalCost)</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        for(uint i=0; i&lt;_recipients.length; i++) {</span>
+<span class="cstat-no" title="statement not covered" >            if(_recipients[i] != address(0)) {</span>
+<span class="cstat-no" title="statement not covered" >                payable(_recipients[i]).transfer(_value)</span>;
+            }
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        emit EthAirdrop(msg.sender, _recipients.length, _value.mul(_recipients.length));</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+&nbsp;
+<span class="fstat-no" title="function not covered" >    function _getTotalEthValue(uint256[] memory _values) internal pure returns(uint256) {</span>
+<span class="cstat-no" title="statement not covered" >        uint256 totalVal = 0;</span>
+<span class="cstat-no" title="statement not covered" >        for(uint i = 0; i &lt; _values.length; i++) {</span>
+            totalVal = totalVal.add(_values[i]);
+        }
+<span class="cstat-no" title="statement not covered" >        return totalVal;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the distribution of Ether to be transferred to multiple recipients at
+     * a time.
+     *
+     * @param _recipients The list of addresses which will receive tokens.
+     * @param _values The corresponding amounts that the recipients will receive
+     * @param _afCode If the user is affiliated with a partner, they will provide this code so that
+     * the parter is paid commission.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function multiValueEthAirdrop(address[] memory _recipients, uint256[] memory _values, string memory _afCode) public payable returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        require(_recipients.length == _values.length, "Total number of recipients and values are not equal")</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        uint256 totalEthValue = _getTotalEthValue(_values);</span>
+<span class="cstat-no" title="statement not covered" >        uint256 price = _recipients.length.mul(dropUnitPrice);</span>
+<span class="cstat-no" title="statement not covered" >        uint256 totalCost = totalEthValue.add(price);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            msg.value &gt;= totalCost || isPremiumMember[msg.sender],
+            "Not enough ETH sent with transaction!"
+        );
+&nbsp;
+&nbsp;
+        _afCode = processAffiliateCode(_afCode);
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        if(!isPremiumMember[msg.sender]) {</span>
+<span class="cstat-no" title="statement not covered" >            distributeCommission(_recipients.length, _afCode)</span>;
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        giveChange(totalCost)</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        for(uint i = 0; i &lt; _recipients.length; i++) {</span>
+<span class="cstat-no" title="statement not covered" >            if(_recipients[i] != address(0) &amp;&amp; _values[i] &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >                payable(_recipients[i]).transfer(_values[i])</span>;
+            }
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        emit EthAirdrop(msg.sender, _recipients.length, totalEthValue);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the distribution of an ERC20 token to be transferred to multiple recipients at
+     * a time. This function only facilitates batch transfers of constant values (i.e., all recipients
+     * will receive the same amount of tokens).
+     *
+     * @param _addressOfToken The contract address of an ERC20 token.
+     * @param _recipients The list of addresses which will receive tokens.
+     * @param _value The amount of tokens all addresses will receive.
+     * @param _afCode If the user is affiliated with a partner, they will provide this code so that
+     * the parter is paid commission.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function singleValueTokenAirdrop(address _addressOfToken,  address[] memory _recipients, uint256 _value, string memory _afCode) public payable returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        IERC20 token = IERC20(_addressOfToken);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        uint256 price = _recipients.length.mul(dropUnitPrice);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            msg.value &gt;= price || tokenHasFreeTrial(_addressOfToken) || isPremiumMember[msg.sender],
+            "Not enough ETH sent with transaction!"
+        );
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        giveChange(price)</span>;
+&nbsp;
+        _afCode = processAffiliateCode(_afCode);
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        for(uint i = 0; i &lt; _recipients.length; i++) {</span>
+<span class="cstat-no" title="statement not covered" >            if(_recipients[i] != address(0)) {</span>
+<span class="cstat-no" title="statement not covered" >                token.transferFrom(msg.sender, _recipients[i], _value)</span>;
+            }
+        }
+<span class="cstat-no" title="statement not covered" >        if(tokenHasFreeTrial(_addressOfToken)) {</span>
+            tokenTrialDrops[_addressOfToken] = tokenTrialDrops[_addressOfToken].add(_recipients.length);
+        } else {
+<span class="cstat-no" title="statement not covered" >            if(!isPremiumMember[msg.sender]) {</span>
+<span class="cstat-no" title="statement not covered" >                distributeCommission(_recipients.length, _afCode)</span>;
+            }
+&nbsp;
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        emit TokenAirdrop(msg.sender, _addressOfToken, _recipients.length);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+     * Allows for the distribution of an ERC20 token to be transferred to multiple recipients at
+     * a time. This function facilitates batch transfers of differing values (i.e., all recipients
+     * can receive different amounts of tokens).
+     *
+     * @param _addressOfToken The contract address of an ERC20 token.
+     * @param _recipients The list of addresses which will receive tokens.
+     * @param _values The corresponding values of tokens which each address will receive.
+     * @param _afCode If the user is affiliated with a partner, they will provide this code so that
+     * the parter is paid commission.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function multiValueTokenAirdrop(address _addressOfToken,  address[] memory _recipients, uint256[] memory _values, string memory _afCode) public payable returns(bool) {</span>
+<span class="cstat-no" title="statement not covered" >        IERC20 token = IERC20(_addressOfToken);</span>
+<span class="cstat-no" title="statement not covered" >        require(_recipients.length == _values.length, "Total number of recipients and values are not equal")</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        uint256 price = _recipients.length.mul(dropUnitPrice);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            msg.value &gt;= price || tokenHasFreeTrial(_addressOfToken) || isPremiumMember[msg.sender],
+            "Not enough ETH sent with transaction!"
+        );
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        giveChange(price)</span>;
+&nbsp;
+        _afCode = processAffiliateCode(_afCode);
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        for(uint i = 0; i &lt; _recipients.length; i++) {</span>
+<span class="cstat-no" title="statement not covered" >            if(_recipients[i] != address(0) &amp;&amp; _values[i] &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >                token.transferFrom(msg.sender, _recipients[i], _values[i])</span>;
+            }
+        }
+<span class="cstat-no" title="statement not covered" >        if(tokenHasFreeTrial(_addressOfToken)) {</span>
+            tokenTrialDrops[_addressOfToken] = tokenTrialDrops[_addressOfToken].add(_recipients.length);
+        } else {
+<span class="cstat-no" title="statement not covered" >            if(!isPremiumMember[msg.sender]) {</span>
+<span class="cstat-no" title="statement not covered" >                distributeCommission(_recipients.length, _afCode)</span>;
+            }
+        }
+<span class="cstat-no" title="statement not covered" >        emit TokenAirdrop(msg.sender, _addressOfToken, _recipients.length);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+&nbsp;
+&nbsp;
+    /**
+    * Send the owner and affiliates commissions.
+    **/
+<span class="fstat-no" title="function not covered" >    function distributeCommission(uint256 _drops, string memory _afCode) internal {</span>
+<span class="cstat-no" title="statement not covered" >        if(!stringsAreEqual(_afCode,"void") &amp;&amp; isAffiliate[affiliateCodeToAddr[_afCode]]) {</span>
+<span class="cstat-no" title="statement not covered" >            uint256 profitSplit = _drops.mul(dropUnitPrice).div(2);</span>
+<span class="cstat-no" title="statement not covered" >            payable(owner()).transfer(profitSplit)</span>;
+<span class="cstat-no" title="statement not covered" >            payable(affiliateCodeToAddr[_afCode]).transfer(profitSplit)</span>;
+<span class="cstat-no" title="statement not covered" >            emit CommissionPaid(affiliateCodeToAddr[_afCode], profitSplit);</span>
+        } else {
+<span class="cstat-no" title="statement not covered" >            payable(owner()).transfer(_drops.mul(dropUnitPrice))</span>;
+        }
+    }
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+    /**
+     * Allows for any ERC20 tokens which have been mistakenly  sent to this contract to be returned
+     * to the original sender by the owner of the contract. Any attempt made by any other account
+     * to invoke the function will result in a loss of gas and no tokens will be transferred out.
+     *
+     * @param _addressOfToken The contract address of an ERC20 token.
+     * @param _recipient The address which will receive tokens.
+     * @param _value The amount of tokens to refund.
+     *
+     * @return true if function executes successfully, false otherwise.
+     * */
+<span class="fstat-no" title="function not covered" >    function withdrawERC20Tokens(address _addressOfToken,  address _recipient, uint256 _value) public onlyOwner returns(bool){</span>
+<span class="cstat-no" title="statement not covered" >        require(</span>
+            _addressOfToken != address(0)
+            &amp;&amp; _recipient != address(0)
+            &amp;&amp; _value &gt; 0
+        );
+<span class="cstat-no" title="statement not covered" >        IERC20 token = IERC20(_addressOfToken);</span>
+<span class="cstat-no" title="statement not covered" >        token.transfer(_recipient, _value)</span>;
+<span class="cstat-no" title="statement not covered" >        emit ERC20TokensWithdrawn(_addressOfToken, _recipient, _value);</span>
+<span class="cstat-no" title="statement not covered" >        return true;</span>
+    }
+}</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Mar 31 2023 22:21:47 GMT+0000 (Coordinated Universal Time)
+</div>
+</div>
+<script src="../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../sorter.js"></script>
+</body>
+</html>
