@@ -76,16 +76,32 @@ function getForkingSettings() {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.9",
-    settings: {
-      metadata: {
-        bytecodeHash: "none",
+    compilers: [
+      {
+        version: "0.8.9",
+        settings: {
+          metadata: {
+            bytecodeHash: "none",
+          },
+          optimizer: {
+            enabled: true,
+            runs: 800,
+          },
+        },
       },
-      optimizer: {
-        enabled: true,
-        runs: 800,
-      },
-    },
+      {
+        version: "0.8.18",
+        settings: {
+          metadata: {
+            bytecodeHash: "none",
+          },
+          optimizer: {
+            enabled: true,
+            runs: 800,
+          },
+        },
+      }
+    ],
   },
   networks: {
     local: {
